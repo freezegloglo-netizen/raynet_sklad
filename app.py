@@ -1,44 +1,38 @@
 print("APP FILE LOADED")
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, Request, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
-import sqlite3
-import csv, io, datetime
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi import Cookie
+import psycopg2
+import os
+import psycopg2
 
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-app = FastAPI()
-
-PASSWORD = "morava"   # ← změň si na svoje heslo
-
-
-conn = sqlite3.connect("sklad.db", check_same_thread=False)
+conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
+
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, 
     code TEXT,
     name TEXT,
     manufacturer TEXT,
     quantity INTEGER,
     min_limit INTEGER DEFAULT 5
-)
-""")
+    );
+    """)
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS movements (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     code TEXT,
-    change INTEGER,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-)
+    change INTEGER,    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """)
 
 conn.commit()
-
 
 from openpyxl import Workbook
 from fastapi.responses import StreamingResponse
@@ -857,5 +851,4 @@ def api_history(manufacturer: str):
         timeline[code]["v"].append(timeline[code]["sum"])
 
     return JSONResponse(timeline)
-
 
