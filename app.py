@@ -2,14 +2,19 @@ print("APP FILE LOADED")
 
 from fastapi import FastAPI, Form, Request, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
-import psycopg2
 import os
 import psycopg2
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+app = FastAPI()
+
+from fastapi.responses import JSONResponse
+
+
+DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://postgres.pphpcjlojcclwiwnxojp:servismorava123@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
+
 
 
 cursor.execute("""
@@ -37,6 +42,33 @@ conn.commit()
 from openpyxl import Workbook
 from fastapi.responses import StreamingResponse
 import io
+
+@app.get("/manifest.json")
+def manifest():
+    return JSONResponse({
+        "name": "Raynet Sklad",
+        "short_name": "Sklad",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#141414",
+        "theme_color": "#141414",
+        "icons": [
+            {
+                "src": "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
+                "sizes": "512x512",
+                "type": "image/png"
+            }
+        ]
+    })
+
+@app.get("/sw.js")
+def sw():
+        js = """
+    self.addEventListener('install', e => self.skipWaiting());
+    self.addEventListener('fetch', event => {});
+    """
+    return HTMLResponse(js, media_type="application/javascript")
+
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
@@ -128,116 +160,117 @@ def home(request: Request, auth: str = Cookie(default=None)):
     <meta charset="utf-8">
     <title>Sklad</title>
     <style>
-
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
 
     body {
-        background: #0f1115;
-        color: #e6e6e6;
-        font-family: 'Inter', sans-serif;
-        margin: 0;
-        padding: 20px;
+        margin:0;
+        font-family:'Inter', sans-serif;
+        background:linear-gradient(135deg,#141414,#1c1c1c);
+        color:#e6e6e6;
     }
 
-    /* HORNÍ LIŠTA */
+    /* TOP BAR */
     .topbar {
-        background: #151922;
-        padding: 12px 18px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+        position:sticky;
+        top:0;
+        background:rgba(20,20,20,0.9);
+        backdrop-filter: blur(8px);
+        padding:12px;
+        border-bottom:1px solid #2a2a2a;
+        z-index:10;
     }
 
-    /* TLAČÍTKA */
+    .topbar button {
+        margin-right:6px;
+    }
+
+    /* BUTTON */
     button {
-        background: #1f2633;
-        color: #e6e6e6;
-        border: none;
-        padding: 6px 12px;
-        margin: 2px;
-        border-radius: 8px;
-        font-family: 'Inter', sans-serif;
-        transition: 0.2s;
+        background:#2a2a2a;
+        color:#fff;
+        border:none;
+        padding:7px 12px;
+        border-radius:10px;
+        cursor:pointer;
+        transition:.15s;
     }
 
     button:hover {
-        background: #2d3748;
-        transform: translateY(-1px);
-        cursor: pointer;
+        transform:translateY(-1px);
+        background:#333;
+        box-shadow:0 4px 12px rgba(0,0,0,0.4);
     }
 
-    /* INPUT */
-    input {
-        background: #151922;
-        color: #e6e6e6;
-        border: 1px solid #2a3140;
-        padding: 6px;
-        border-radius: 6px;
+    /* CARD */
+    .card {
+        background:#1f1f1f;
+        border-radius:16px;
+        padding:14px;
+        margin-bottom:14px;
+        box-shadow:0 6px 22px rgba(0,0,0,0.45);
     }
 
-    /* TABULKA */
+    /* TABLE */
     table {
-        border-collapse: collapse;
-        width: 100%;
-        background: #151922;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-        margin-bottom: 20px;
-    }
-
-    th, td {
-        padding: 10px;
-        text-align: left;
+        width:100%;
+        border-collapse:collapse;
+        overflow:hidden;
+        border-radius:12px;
     }
 
     th {
-        background: #1d2430;
-        font-weight: 600;
-        letter-spacing: 0.3px;
+        background:#2b2b2b;
+        font-weight:600;
     }
 
-    tr {
-        border-bottom: 1px solid #232a36;
+    td, th {
+        padding:8px;
+        border-bottom:1px solid #333;
     }
 
     tr:hover {
-        background: #1b212c;
+        background:#262626;
     }
 
-    /* BARVY MNOŽSTVÍ */
-    .qty-low {
-        color: #ff5c5c;
-        font-weight: 600;
+    /* BADGE */
+    .badge {
+        padding:2px 8px;
+        border-radius:6px;
+        font-size:12px;
     }
 
-    .qty-ok {
-        color: #5cff8d;
-        font-weight: 600;
-    }
+    .ok { background:#163d1d; color:#6dff8e; }
+    .low { background:#3d2a16; color:#ffcc66; }
+    .critical { background:#3d1616; color:#ff6b6b; }
 
-    /* NADPISY */
-    h1, h2, h3 {
-        font-weight: 600;
-        letter-spacing: 0.3px;
+    /* MOBILE */
+    @media (max-width:700px) {
+        table { font-size:13px; }
+        h1 { font-size:20px; }
     }
-
-    /* GRAF BOX */
-    canvas {
-        background: #151922;
-        border-radius: 12px;
-        padding: 10px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-    }
-
     </style>
 
     </head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#141414">
+
     <body>
     <div class="topbar">
+        <a href="/"><button>🏠 Dashboard</button></a>
         <a href="/all"><button>📦 Seznam dílů</button></a>
         <a href="/low"><button>⚠ Nízký stav</button></a>
-        <a href="/history"><button>🕘 Historie pohybu</button></a>
+        <a href="/history"><button>📈 Historie</button></a>
+    <div class="card">
+    <h2>🏭 {{manufacturer}}</h2>
+    
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js');
+    }
+    </script>
+
     </div>
 
     <hr>
@@ -851,4 +884,23 @@ def api_history(manufacturer: str):
         timeline[code]["v"].append(timeline[code]["sum"])
 
     return JSONResponse(timeline)
+
+import threading, time, datetime, os
+
+def backup_loop():
+    while True:
+        try:
+            ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+            filename = f"/tmp/backup_{ts}.sql"
+
+            os.system(f'pg_dump "{DATABASE_URL}" > {filename}')
+            print("BACKUP OK", filename)
+
+        except Exception as e:
+            print("BACKUP ERROR", e)
+
+        time.sleep(3600)
+
+threading.Thread(target=backup_loop, daemon=True).start()
+
 
