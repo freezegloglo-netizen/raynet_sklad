@@ -13,9 +13,6 @@ from fastapi.responses import JSONResponse
 
 DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://postgres.pphpcjlojcclwiwnxojp:servismorava123@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
 
-conn = psycopg2.connect(DATABASE_URL)
-cursor = conn.cursor()
-
 PASSWORD = "morava"
 
 cursor.execute("""
