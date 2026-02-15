@@ -12,30 +12,11 @@ from fastapi.responses import JSONResponse
 
 
 DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://postgres.pphpcjlojcclwiwnxojp:servismorava123@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
+def get_conn():
+    return psycopg2.connect(DATABASE_URL)
+
 
 PASSWORD = "morava"
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS products (
-    id SERIAL PRIMARY KEY, 
-    code TEXT,
-    name TEXT,
-    manufacturer TEXT,
-    quantity INTEGER,
-    min_limit INTEGER DEFAULT 5
-    );
-    """)
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS movements (
-    id SERIAL PRIMARY KEY,
-    code TEXT,
-    change INTEGER,    
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-""")
-
-conn.commit()
 
 from openpyxl import Workbook
 from fastapi.responses import StreamingResponse
@@ -94,6 +75,10 @@ import io
 
 @app.get("/export_low_stock")
 def export_low_stock():
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
     cursor.execute("""
         SELECT code, name, manufacturer, quantity, min_limit
         FROM products
@@ -101,6 +86,9 @@ def export_low_stock():
         ORDER BY manufacturer, name
     """)
     rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
 
     wb = Workbook()
     ws = wb.active
@@ -120,7 +108,6 @@ def export_low_stock():
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=nizky_stav.xlsx"}
     )
-
 
     html = """
     <!DOCTYPE html>
