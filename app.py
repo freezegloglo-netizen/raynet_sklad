@@ -2,8 +2,9 @@ print("APP FILE LOADED")
 
 from fastapi import FastAPI, Form, Request, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
-import os
 import psycopg2
+import os
+
 
 app = FastAPI()
 
@@ -124,53 +125,19 @@ def export_low_stock():
     )
 
 
-# ================= HOME =================
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request, auth: str = Cookie(default=None)):
-
-    try:
-        conn.rollback()
-    except:
-        pass   
-
-    if auth != "ok":
-        return RedirectResponse(url="/login", status_code=303)
-
-
-    q = request.query_params.get("q")
-
-    if q:
-        cursor.execute("""
-            SELECT id, code, name, manufacturer, quantity, min_limit
-            FROM products
-            WHERE code ILIKE %s OR name ILIKE %s OR manufacturer ILIKE %s
-            ORDER BY manufacturer, name
-        """, (f"%{q}%", f"%{q}%", f"%{q}%"))
-
-    else:
-        cursor.execute("""
-            SELECT id, code, name, manufacturer, quantity, min_limit
-            FROM products
-            ORDER BY manufacturer, name
-        """)
-
-    products = cursor.fetchall()
-    html = """<!DOCTYPE html>
-
+    html = """
+    <!DOCTYPE html>
     <html>
     <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    
+
     <title>Sklad</title>
-    
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#141414">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
     <style>
-    
+
     body {
         margin:0;
         font-family:'Inter', sans-serif;
@@ -186,14 +153,8 @@ def home(request: Request, auth: str = Cookie(default=None)):
         backdrop-filter: blur(8px);
         padding:12px;
         border-bottom:1px solid #2a2a2a;
-        z-index:10;
     }
 
-    .topbar button {
-        margin-right:6px;
-    }
-
-    /* BUTTON */
     button {
         background:#2a2a2a;
         color:#fff;
@@ -201,250 +162,39 @@ def home(request: Request, auth: str = Cookie(default=None)):
         padding:7px 12px;
         border-radius:10px;
         cursor:pointer;
-        transition:.15s;
     }
 
     button:hover {
-        transform:translateY(-1px);
         background:#333;
-        box-shadow:0 4px 12px rgba(0,0,0,0.4);
     }
 
-    /* CARD */
     .card {
         background:#1f1f1f;
         border-radius:16px;
         padding:14px;
-        margin-bottom:14px;
-        box-shadow:0 6px 22px rgba(0,0,0,0.45);
+        margin:14px;
     }
 
-    /* TABLE */
-    table {
-        width:100%;
-        border-collapse:collapse;
-        overflow:hidden;
-        border-radius:12px;
-    }
-
-    th {
-        background:#2b2b2b;
-        font-weight:600;
-    }
-
-    td, th {
-        padding:8px;
-        border-bottom:1px solid #333;
-    }
-
-    tr:hover {
-        background:#262626;
-    }
-
-    /* BADGE */
-    .badge {
-        padding:2px 8px;
-        border-radius:6px;
-        font-size:12px;
-    }
-
-    .ok { background:#163d1d; color:#6dff8e; }
-    .low { background:#3d2a16; color:#ffcc66; }
-    .critical { background:#3d1616; color:#ff6b6b; }
-
-    /* MOBILE */
-    @media (max-width:700px) {
-        table { font-size:13px; }
-        h1 { font-size:20px; }
-    }
     </style>
-
     </head>
-    
+
     <body>
+
     <div class="topbar">
-    <div class="grid">
-
-    <div class="card">
-        <div>📦 Produkty</div>
-        <div class="stat">{{total_products}}</div>
+        <a href="/"><button>🏠 Dashboard</button></a>
+        <a href="/all"><button>📦 Produkty</button></a>
+        <a href="/low"><button>⚠ Nízký stav</button></a>
+        <a href="/history"><button>📈 Historie</button></a>
     </div>
 
     <div class="card">
-        <div>⚠ Nízký stav</div>
-        <div class="stat">{{low_products}}</div>
+    <p>Produkty v databázi: """ + str(len(products)) + """</p>
     </div>
-
-    <div class="card">
-        <div>📈 Pohyby dnes</div>
-        <div class="stat">{{today_moves}}</div>
-    </div>
-
-    <div class="card">
-        <div>🏭 Výrobci</div>
-        <div class="stat">{{manufacturers}}</div>
-    </div>
-
-    </div>
-
-    <div class="card">
-    
-    <script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js');
-    }
-    </script>
-
-    </div>
-
-    <hr>
-
-
-    <h1>Sklad</h1>
-
-    <form method="get" action="/">
-        🔎 <input name="q" placeholder="kód / název / výrobce">
-        <button type="submit">Hledat</button>
-    </form>
-
-    <br>
-
-    <a href="/export_excel"><button>📊 Export Excel</button></a>
-    <br><br>
-
-    <a href="/export_low_stock">
-    <button>Excel - nízký stav</button>
-    </a>
-
-    <br><br>
-
-    <hr>
-
-    <h2>📊 Množství podle výrobců</h2>
-    <canvas id="chart" height="120"></canvas>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-    const labels = {{ labels }};
-    const data = {{ values }};
-
-    const colors = labels.map((_, i) =>
-        `hsl(${(i * 360 / labels.length)}, 70%, 50%)`
-    );
-
-    new Chart(document.getElementById('chart'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-            label: 'Množství',
-            data: data,
-            backgroundColor: colors
-            }]
-        },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
-    </script>
-    <h3>Historie podle výrobce</h3>
-
-    <select id="manSelect"></select>
-    <canvas id="lineChart" height="120"></canvas>
-
-    <script>
-    window.addEventListener("DOMContentLoaded", async () => {
-
-        async function loadManufacturers() {
-            const res = await fetch('/api/manufacturers');
-            const data = await res.json();
-
-            const sel = document.getElementById('manSelect');
-            sel.innerHTML = "";
- 
-            data.forEach(m => {
-                const opt = document.createElement("option");
-                opt.value = m;
-                opt.textContent = m;
-                sel.appendChild(opt);
-            });
-
-            if (data.length > 0) {
-                loadGraph(data[0]);
-            }
-        }
-
-        async function loadGraph(manufacturer) {
-            const res = await fetch(`/api/history/${manufacturer}`);
-            const json = await res.json();
-
-            let labels = [];
-            const datasets = [];
-
-            const keys = Object.keys(json);
-            if (keys.length === 0) return;
- 
-            keys.forEach((code, i) => {
-                const item = json[code];
-
-                if (labels.length === 0) {
-                    labels = item.t;
-                }
-
-                datasets.push({
-                    label: code,
-                    data: item.v,
-                    borderColor: `hsl(${i * 360 / keys.length}, 70%, 50%)`,
-                    fill: false,
-                    tension: 0.25,
-                    pointRadius: 0
-                });
-            });
-
-            if (window.lineChart && typeof window.lineChart.destroy === "function") {
-                window.lineChart.destroy();
-            }
-
-            const ctx = document.getElementById('lineChart').getContext('2d');
-
-            window.lineChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    animation: false,
-                    interaction: {
-                         mode: 'index',
-                         intersect: false
-                    },
-                    plugins: {
-                        legend: { display: true }
-                    },
-                    scales: {
-                        x: { ticks: { maxTicksLimit: 10 }},
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-        }
-
-    document.getElementById('manSelect').addEventListener('change', e => {
-        loadGraph(e.target.value);
-    });
-
-    loadManufacturers();
-});
-</script>
-
 
     </body>
     </html>
-    """
-    
+    """    
+
     # ===== DATA PRO GRAF =====
     cursor.execute("""
         SELECT manufacturer, SUM(quantity)
@@ -480,7 +230,159 @@ def home(request: Request, auth: str = Cookie(default=None)):
     html = html.replace("{{manufacturers}}", str(manufacturers))
     # ================================
 
-  
+# ================= HOME / DASHBOARD =================
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request, auth: str = Cookie(default=None)):
+
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
+
+    try:
+        # ====== DATA PRO GRAF SLOUPCOVÝ ======
+        cursor.execute("""
+            SELECT manufacturer, SUM(quantity)
+            FROM products
+            GROUP BY manufacturer
+            ORDER BY manufacturer
+        """)
+        data = cursor.fetchall()
+
+        labels = [d[0] if d[0] else "Neznámý" for d in data]
+        values = [int(d[1]) for d in data]
+
+        # ===== DASHBOARD STATISTIKY =====
+        cursor.execute("SELECT COUNT(*) FROM products")
+        total_products = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM products WHERE quantity <= min_limit")
+        low_products = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM movements WHERE DATE(created_at)=CURRENT_DATE")
+        today_moves = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(DISTINCT manufacturer) FROM products")
+        manufacturers = cursor.fetchone()[0]
+
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        return HTMLResponse(f"<h1>DB ERROR</h1><pre>{e}</pre>")
+
+    cursor.close()
+    conn.close()
+
+    import json
+
+    html = """
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <title>Sklad</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+
+    <body style="background:#111;color:#eee;font-family:Arial">
+
+    <div>
+        <b>📦 Produkty:</b> {{total_products}} |
+        <b>⚠ Nízký stav:</b> {{low_products}} |
+        <b>📈 Pohyby dnes:</b> {{today_moves}} |
+        <b>🏭 Výrobci:</b> {{manufacturers}}
+    </div>
+
+    <hr>
+
+    <h2>Množství podle výrobců</h2>
+    <canvas id="barChart"></canvas>
+
+    <h2>Historie podle výrobce</h2>
+    <select id="manSelect"></select>
+    <canvas id="lineChart"></canvas>
+
+    <script>
+
+    const labels = {{labels}};
+    const values = {{values}};
+
+    new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Množství',
+                data: values
+            }]
+        }
+    });
+
+    async function loadManufacturers() {
+        const res = await fetch('/api/manufacturers');
+        const data = await res.json();
+        const sel = document.getElementById('manSelect');
+        sel.innerHTML = "";
+
+        data.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m;
+            opt.textContent = m;
+            sel.appendChild(opt);
+        });
+
+        if (data.length > 0) loadGraph(data[0]);
+    }
+
+    async function loadGraph(man) {
+        const res = await fetch(`/api/history/${man}`);
+        const json = await res.json();
+
+        let labels = [];
+        const datasets = [];
+
+        const keys = Object.keys(json);
+        if (keys.length === 0) return;
+
+        keys.forEach((code, i) => {
+            const item = json[code];
+            if (labels.length === 0) labels = item.t;
+
+            datasets.push({
+                label: code,
+                data: item.v,
+                borderWidth: 2,
+                fill: false
+            });
+        });
+
+        if (window.lineChart) window.lineChart.destroy();
+
+        window.lineChart = new Chart(document.getElementById('lineChart'), {
+            type: 'line',
+            data: { labels: labels, datasets: datasets }
+        });
+    }
+
+    document.getElementById('manSelect').addEventListener('change', e => {
+        loadGraph(e.target.value);
+    });
+
+    loadManufacturers();
+    </script>
+
+    </body>
+    </html>
+    """
+
+    html = html.replace("{{labels}}", json.dumps(labels))
+    html = html.replace("{{values}}", json.dumps(values))
+    html = html.replace("{{total_products}}", str(total_products))
+    html = html.replace("{{low_products}}", str(low_products))
+    html = html.replace("{{today_moves}}", str(today_moves))
+    html = html.replace("{{manufacturers}}", str(manufacturers))
+
     return HTMLResponse(html)
 
 @app.get("/all", response_class=HTMLResponse)
