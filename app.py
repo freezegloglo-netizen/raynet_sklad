@@ -128,7 +128,11 @@ def export_low_stock():
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, auth: str = Cookie(default=None)):
 
-   
+    try:
+        conn.rollback()
+    except:
+        pass   
+
     if auth != "ok":
         return RedirectResponse(url="/login", status_code=303)
 
@@ -139,9 +143,10 @@ def home(request: Request, auth: str = Cookie(default=None)):
         cursor.execute("""
             SELECT id, code, name, manufacturer, quantity, min_limit
             FROM products
-            WHERE code LIKE ? OR name LIKE ? OR manufacturer LIKE ?
+            WHERE code ILIKE %s OR name ILIKE %s OR manufacturer ILIKE %s
             ORDER BY manufacturer, name
         """, (f"%{q}%", f"%{q}%", f"%{q}%"))
+
     else:
         cursor.execute("""
             SELECT id, code, name, manufacturer, quantity, min_limit
