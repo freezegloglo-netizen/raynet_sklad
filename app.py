@@ -15,7 +15,7 @@ DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://postgres.pphpcjlojcclw
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 
-
+PASSWORD = "morava"
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS products (
@@ -63,10 +63,7 @@ def manifest():
 
 @app.get("/sw.js")
 def sw():
-        js = """
-    self.addEventListener('install', e => self.skipWaiting());
-    self.addEventListener('fetch', event => {});
-    """
+    js = "self.addEventListener('install', e => self.skipWaiting());\nself.addEventListener('fetch', event => {});"
     return HTMLResponse(js, media_type="application/javascript")
 
 
@@ -158,10 +155,17 @@ def home(request: Request, auth: str = Cookie(default=None)):
     <html>
     <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
     <title>Sklad</title>
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#141414">
 
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+    
     body {
         margin:0;
         font-family:'Inter', sans-serif;
@@ -251,19 +255,34 @@ def home(request: Request, auth: str = Cookie(default=None)):
     </style>
 
     </head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#141414">
-
+    
     <body>
     <div class="topbar">
-        <a href="/"><button>🏠 Dashboard</button></a>
-        <a href="/all"><button>📦 Seznam dílů</button></a>
-        <a href="/low"><button>⚠ Nízký stav</button></a>
-        <a href="/history"><button>📈 Historie</button></a>
+    <div class="grid">
+
     <div class="card">
-    <h2>🏭 {{manufacturer}}</h2>
+        <div>📦 Produkty</div>
+        <div class="stat">{{total_products}}</div>
+    </div>
+
+    <div class="card">
+        <div>⚠ Nízký stav</div>
+        <div class="stat">{{low_products}}</div>
+    </div>
+
+    <div class="card">
+        <div>📈 Pohyby dnes</div>
+        <div class="stat">{{today_moves}}</div>
+    </div>
+
+    <div class="card">
+        <div>🏭 Výrobci</div>
+        <div class="stat">{{manufacturers}}</div>
+    </div>
+
+    </div>
+
+    <div class="card">
     
     <script>
     if ('serviceWorker' in navigator) {
@@ -437,14 +456,33 @@ def home(request: Request, auth: str = Cookie(default=None)):
     html = html.replace("{{ labels }}", json.dumps(labels))
     html = html.replace("{{ values }}", json.dumps(values))
 
+    # ===== DASHBOARD STATISTIKY =====
+    cursor.execute("SELECT COUNT(*) FROM products")
+    total_products = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM products WHERE quantity <= min_limit")
+    low_products = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM movements WHERE DATE(created_at)=CURRENT_DATE")
+    today_moves = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(DISTINCT manufacturer) FROM products")
+    manufacturers = cursor.fetchone()[0]
+
+    html = html.replace("{{total_products}}", str(total_products))
+    html = html.replace("{{low_products}}", str(low_products))
+    html = html.replace("{{today_moves}}", str(today_moves))
+    html = html.replace("{{manufacturers}}", str(manufacturers))
+    # ================================
 
   
     return HTMLResponse(html)
 
 @app.get("/all", response_class=HTMLResponse)
-def all_products(auth: str = Cookie(default=None)):
+def all_products(request: Request, auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
+    q = request.query_params.get("q")
 
     html = """
     <html>
@@ -453,106 +491,103 @@ def all_products(auth: str = Cookie(default=None)):
     <meta charset="utf-8">
     <title>Seznam dílů</title>
     <style>
-    body {
-    background:#0f1218;
-    color:#e6e6e6;
-    font-family: 'Inter', sans-serif;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+    body{
+        margin:0;
+        font-family:'Inter',sans-serif;
+        background:linear-gradient(135deg,#0f1115,#181c22);
+        color:#e8e8e8;
     }
 
-    /* ===== MENU ===== */
-    .topbar {
-        background: rgba(20,25,35,0.7);
-        backdrop-filter: blur(6px);
-        border-radius: 12px;
-        padding: 10px;
-        margin-bottom: 15px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.35);
-    }
-
-    /* ===== TABULKY ===== */
-    table {
-        border-collapse: collapse;
-        width:100%;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-    }
-
-    th {
-        background: #1c2230;
-    }
-
-    td, th {
-        padding: 8px;
-        border-bottom: 1px solid #2a3244;
+    /* ===== TOP BAR ===== */
+    .topbar{
+        position:sticky;
+        top:0;
+        display:flex;
+        gap:8px;
+        padding:14px;
+        background:rgba(15,17,21,0.85);
+        backdrop-filter:blur(8px);
+        border-bottom:1px solid #262a33;
+        z-index:10;
     }
 
     /* ===== BUTTON ===== */
-    button {
-        background: #1c2230;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 8px;
-        color: #ddd;
-        transition: 0.15s;
+    button{
+        background:#222833;
+        color:#fff;
+        border:none;
+        padding:8px 14px;
+        border-radius:10px;
+        cursor:pointer;
+        transition:0.15s;
+        font-weight:500;
     }
 
-    button:hover {
-        background: #2b3447;
-        transform: translateY(-1px);
+    button:hover{
+        background:#2d3442;
+        transform:translateY(-1px);
+        box-shadow:0 4px 14px rgba(0,0,0,0.35);
     }
 
-    /* ===== INPUT ===== */
-    input {
-        background: #1c2230;
-        border: 1px solid #2a3244;
-        color: #ddd;
-        padding: 5px;
-        border-radius: 6px;
+    /* ===== DASHBOARD GRID ===== */
+    .grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+        gap:14px;
+        margin-bottom:14px;
     }
 
-
-    /* ===== KARTY ===== */
-    .cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 14px;
-        margin-top: 10px;
+    /* ===== CARD ===== */
+    .card{
+        background:#171b22;
+        border-radius:16px;
+        padding:16px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.45);
+        border:1px solid #262a33;
     }
 
-    .card {
-        background: #151922;
-        border-radius: 14px;
-        padding: 14px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-        transition: 0.2s;
+    /* ===== STAT NUMBER ===== */
+    .stat{
+        font-size:26px;
+        font-weight:600;
     }
 
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 22px rgba(0,0,0,0.45);
+    /* ===== TABLE ===== */
+    table{
+        width:100%;
+        border-collapse:collapse;
+        border-radius:12px;
+        overflow:hidden;
     }
 
-    .card-title {
-        font-weight: 600;
-        margin-bottom: 4px;
+    th{
+        background:#202631;
+        font-weight:600;
     }
 
-    .card-code {
-        font-size: 12px;
-        opacity: 0.7;
+    td,th{
+        padding:9px;
+        border-bottom:1px solid #262a33;
     }
 
-    .card-qty {
-        font-size: 18px;
-        font-weight: 600;
-        margin: 6px 0;
+    tr:hover{
+        background:#1c212b;
     }
 
-    .card-actions {
-        margin-top: 8px;
+    /* ===== STATUS COLORS ===== */
+    .ok{color:#4cff88;font-weight:600;}
+    .low{color:#ffcc66;font-weight:600;}
+    .critical{color:#ff5c5c;font-weight:600;}
+
+    /* ===== MOBILE ===== */
+    @media(max-width:700px){
+        h1{font-size:20px}
+        table{font-size:13px}
     }
     </style>
+
     </head>
     <body>
 
@@ -565,6 +600,11 @@ def all_products(auth: str = Cookie(default=None)):
 
     <h1>📦 Seznam podle výrobců</h1>
     
+    <form method="get" action="/all" style="margin-bottom:10px;">
+        <input name="q" placeholder="Hledat kód / název">
+        <button>Hledat</button>
+    </form>
+
     <h3>Přidat nový produkt</h3>
 
     <form method="post" action="/add" style="margin-bottom:20px;">
@@ -578,8 +618,20 @@ def all_products(auth: str = Cookie(default=None)):
     <hr>
     """
 
-    cursor.execute("SELECT DISTINCT manufacturer FROM products ORDER BY manufacturer")
+    if q:
+        cursor.execute("""
+            SELECT DISTINCT manufacturer
+            FROM products
+            WHERE code ILIKE %s
+               OR name ILIKE %s
+               OR manufacturer ILIKE %s
+            ORDER BY manufacturer
+        """, (f"%{q}%", f"%{q}%", f"%{q}%"))
+    else:
+        cursor.execute("SELECT DISTINCT manufacturer FROM products ORDER BY manufacturer")
+
     manufacturers = [m[0] for m in cursor.fetchall()]
+
 
     for man in manufacturers:
 
@@ -595,37 +647,48 @@ def all_products(auth: str = Cookie(default=None)):
         </tr>
         """
 
-        cursor.execute("""
-            SELECT code, name, quantity, min_limit
-            FROM products
-            WHERE manufacturer=?
-            ORDER BY name
-        """, (man,))
+        if q:
+            cursor.execute("""
+                SELECT code, name, quantity, min_limit
+                FROM products
+                WHERE manufacturer=%s
+                AND (
+                    code ILIKE %s
+                    OR name ILIKE %s
+                    OR manufacturer ILIKE %s
+                )
+                ORDER BY name
+            """, (man, f"%{q}%", f"%{q}%", f"%{q}%"))
+        else:
+            cursor.execute("""
+                SELECT code, name, quantity, min_limit
+                FROM products
+                WHERE manufacturer=%s
+                ORDER BY name
+            """, (man,))
+
         rows = cursor.fetchall()
 
         for r in rows:
-            color = "red" if r[2] <= r[3] else "lime"
-
             html += f"""
             <tr>
                 <td>{r[0]}</td>
                 <td>{r[1] if r[1] else "(bez názvu)"}</td>
-                <td class="{ 'qty-low' if r[2] <= r[3] else 'qty-ok' }">{r[2]}</td>
+                <td class="{ 'low' if r[2] <= r[3] else 'ok' }">{r[2]}</td>
                 <td>{r[3]}</td>
                 <td>
-    <form method="post" action="/change" style="display:inline;">
-        <input type="hidden" name="code" value="{r[0]}">
-        <button name="type" value="add">+</button>
-        <button name="type" value="sub">-</button>
-    </form>
+                    <form method="post" action="/change" style="display:inline;">
+                        <input type="hidden" name="code" value="{r[0]}">
+                        <button name="type" value="add">+</button>
+                        <button name="type" value="sub">-</button>
+                    </form>
 
-    <form method="post" action="/delete_by_code" style="display:inline;"
-          onsubmit="return confirm('Opravdu smazat {r[1]}?');">
-        <input type="hidden" name="code" value="{r[0]}">
-        <button style="color:red;">Smazat</button>
-    </form>
-</td>
-
+                    <form method="post" action="/delete_by_code" style="display:inline;"
+                          onsubmit="return confirm('Opravdu smazat {r[1]}?');">
+                        <input type="hidden" name="code" value="{r[0]}">
+                        <button style="color:red;">Smazat</button>
+                    </form>
+                </td>
             </tr>
             """
 
@@ -636,9 +699,11 @@ def all_products(auth: str = Cookie(default=None)):
 
 
 @app.get("/low", response_class=HTMLResponse)
-def low_products(auth: str = Cookie(default=None)):
+def all_products(request: Request, auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
+    q = request.query_params.get("q")
+
 
     cursor.execute("""
         SELECT code, name, manufacturer, quantity
@@ -742,7 +807,7 @@ def add_product(
         (code, name, manufacturer, quantity, min_limit)
     )
     conn.commit()
-    return RedirectResponse(url="/", status_code=303)
+    return RedirectResponse("/all", status_code=303)
 
 
 # ================= CHANGE =================
@@ -900,6 +965,31 @@ def backup_loop():
             print("BACKUP ERROR", e)
 
         time.sleep(3600)
+
+threading.Thread(target=backup_loop, daemon=True).start()
+
+import threading, time, json
+
+def backup_loop():
+    while True:
+        try:
+            cursor.execute("SELECT code, name, manufacturer, quantity, min_limit FROM products")
+            rows = cursor.fetchall()
+
+            data = json.dumps(rows)
+
+            cursor.execute(
+                "INSERT INTO backups (data) VALUES (%s)",
+                (data,)
+            )
+            conn.commit()
+
+            print("BACKUP OK")
+
+        except Exception as e:
+            print("BACKUP ERROR:", e)
+
+        time.sleep(3600)   # každou hodinu
 
 threading.Thread(target=backup_loop, daemon=True).start()
 
