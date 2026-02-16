@@ -15,6 +15,38 @@ DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://postgres.pphpcjlojcclw
 def get_conn():
     return psycopg2.connect(DATABASE_URL)
 
+# ==== INIT DB (spustí se při startu appky) ====
+try:
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        code TEXT,
+        name TEXT,
+        manufacturer TEXT,
+        quantity INTEGER DEFAULT 0,
+        min_limit INTEGER DEFAULT 5
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS movements (
+        id SERIAL PRIMARY KEY,
+        code TEXT,
+        change INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+except Exception as e:
+    print("DB INIT ERROR:", e)
+
 
 PASSWORD = "morava"
 
