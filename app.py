@@ -2,20 +2,21 @@ print("APP FILE LOADED")
 
 from fastapi import FastAPI, Form, Request, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, JSONResponse
-import psycopg2, os, io, json, datetime, threading, time
+import psycopg2, os, io, json, datetime
 from openpyxl import Workbook
 
 app = FastAPI()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-def get_conn():
-    return psycopg2.connect(DATABASE_URL, sslmode="require")
-
 PASSWORD = "morava"
 
 
-# ================= INIT DB =================
+# ================= DB =================
+def get_conn():
+    return psycopg2.connect(DATABASE_URL)
+
+
 def init_db():
     conn = get_conn()
     cur = conn.cursor()
@@ -44,6 +45,7 @@ def init_db():
     cur.close()
     conn.close()
 
+
 init_db()
 
 
@@ -52,13 +54,14 @@ init_db()
 def login_page():
     return """
     <html><body style="background:#111;color:#eee;font-family:Arial;text-align:center;margin-top:100px">
-    <h2>Přihlášení</h2>
-    <form method="post" action="/login">
-        Heslo: <input type="password" name="password">
-        <button>Přihlásit</button>
+    <h2>🔐 Přihlášení</h2>
+    <form method="post">
+    <input type="password" name="password">
+    <button>Přihlásit</button>
     </form>
     </body></html>
     """
+
 
 @app.post("/login")
 def login(password: str = Form(...)):
@@ -72,138 +75,154 @@ def login(password: str = Form(...)):
 # ================= DASHBOARD =================
 @app.get("/", response_class=HTMLResponse)
 def home(auth: str = Cookie(default=None)):
-
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("SELECT COUNT(*) FROM products")
-    total = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM products WHERE quantity <= min_limit")
-    low = cur.fetchone()[0]
-
+    # sloupcový graf
     cur.execute("SELECT manufacturer, SUM(quantity) FROM products GROUP BY manufacturer ORDER BY manufacturer")
     data = cur.fetchall()
+    labels = [d[0] or "Neznámý" for d in data]
+    values = [int(d[1]) for d in data]
+
+    # statistiky
+    cur.execute("SELECT COUNT(*) FROM products")
+    total_products = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM products WHERE quantity <= min_limit")
+    low_products = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM movements WHERE DATE(created_at)=CURRENT_DATE")
+    today_moves = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(DISTINCT manufacturer) FROM products")
+    manufacturers = cur.fetchone()[0]
 
     cur.close()
     conn.close()
 
-    labels = [d[0] if d[0] else "Neznámý" for d in data]
-    values = [int(d[1]) for d in data]
-
-    return HTMLResponse(f"""
+    html = f"""
     <html>
     <head>
     <meta charset="utf-8">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-    body {{background:#0f1115;color:#eee;font-family:Arial;margin:0}}
-    .nav{{padding:12px;background:#111;position:sticky;top:0}}
-    .nav a{{margin-right:10px}}
-    .card{{padding:15px;margin:10px;background:#181c22;border-radius:10px}}
+    body{{background:#111;color:#eee;font-family:Arial;margin:0;padding:20px}}
+    .card{{background:#1b1b1b;padding:15px;border-radius:14px;margin-bottom:15px}}
+    button{{background:#333;color:white;border:none;padding:6px 12px;border-radius:8px}}
     </style>
     </head>
+
     <body>
 
-    <div class="nav">
-        <a href="/"><button>Dashboard</button></a>
-        <a href="/all"><button>Produkty</button></a>
-        <a href="/low"><button>Nízký stav</button></a>
-        <a href="/search"><button>Hledání</button></a>
-        <a href="/history"><button>Historie</button></a>
+    <div class="card">
+    📦 {total_products} | ⚠ {low_products} | 📈 {today_moves} | 🏭 {manufacturers}
     </div>
 
-    <div class="card">Produkty: {total} | Nízký stav: {low}</div>
+    <canvas id="bar"></canvas>
 
-    <canvas id="barChart"></canvas>
+    <h3>Historie podle výrobce</h3>
+    <select id="man"></select>
+    <canvas id="line"></canvas>
 
     <script>
-    new Chart(document.getElementById('barChart'), {{
-        type: 'bar',
-        data: {{
-            labels: {json.dumps(labels)},
-            datasets: [{{data: {json.dumps(values)}}}]
-        }}
+    const labels={json.dumps(labels)};
+    const values={json.dumps(values)};
+
+    new Chart(document.getElementById('bar'),{{
+        type:'bar',
+        data:{{labels:labels,datasets:[{{data:values}}]}}
     }});
+
+    async function loadMan(){{
+        const r=await fetch('/api/manufacturers');
+        const data=await r.json();
+        let s=document.getElementById('man');
+        data.forEach(m=>{{let o=document.createElement('option');o.value=m;o.textContent=m;s.appendChild(o);}});
+        if(data.length)loadGraph(data[0]);
+    }}
+
+    async function loadGraph(m){{
+        const r=await fetch('/api/history/'+m);
+        const j=await r.json();
+        let labels=[],datasets=[];
+        Object.keys(j).forEach((k,i)=>{{
+            if(labels.length==0)labels=j[k].t;
+            datasets.push({{label:k,data:j[k].v,fill:false}});
+        }});
+        if(window.l)window.l.destroy();
+        window.l=new Chart(document.getElementById('line'),{{type:'line',data:{{labels:labels,datasets:datasets}}}});
+    }}
+
+    document.getElementById('man').onchange=e=>loadGraph(e.target.value);
+    loadMan();
     </script>
 
+    <br>
+    <a href="/all"><button>Produkty</button></a>
+    <a href="/low"><button>Nízký stav</button></a>
+    <a href="/history"><button>Historie</button></a>
+
     </body></html>
-    """)
+    """
+
+    return HTMLResponse(html)
 
 
-# ================= PRODUKTY =================
+# ================= API =================
+@app.get("/api/manufacturers")
+def api_man():
+    conn=get_conn()
+    cur=conn.cursor()
+    cur.execute("SELECT DISTINCT manufacturer FROM products ORDER BY manufacturer")
+    data=[m[0] or "Neznámý" for m in cur.fetchall()]
+    cur.close();conn.close()
+    return data
+
+
+@app.get("/api/history/{manufacturer}")
+def api_hist(manufacturer:str):
+    conn=get_conn()
+    cur=conn.cursor()
+    cur.execute("""
+    SELECT code,change,created_at FROM movements
+    WHERE code IN (SELECT code FROM products WHERE manufacturer=%s)
+    ORDER BY created_at
+    """,(manufacturer,))
+    rows=cur.fetchall()
+    cur.close();conn.close()
+
+    timeline={}
+    for code,ch,ts in rows:
+        timeline.setdefault(code,{"t":[],"v":[],"s":0})
+        timeline[code]["s"]+=ch
+        timeline[code]["t"].append(str(ts))
+        timeline[code]["v"].append(timeline[code]["s"])
+    return timeline
+
+
+# ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)
 def all_products(auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn = get_conn()
-    cur = conn.cursor()
-
+    conn=get_conn()
+    cur=conn.cursor()
     cur.execute("SELECT code,name,manufacturer,quantity,min_limit FROM products ORDER BY manufacturer,name")
-    rows = cur.fetchall()
+    rows=cur.fetchall()
+    cur.close();conn.close()
 
-    cur.close()
-    conn.close()
-
-    html = """
-    <html><body style="background:#111;color:#eee;font-family:Arial">
-    <a href="/">Zpět</a>
-    <h2>Produkty</h2>
-    <table border=1>
-    <tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th></tr>
-    """
+    html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
+    html+="<h2>Produkty</h2><a href='/'>Zpět</a><table border=1 width=100%>"
+    html+="<tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th></tr>"
 
     for r in rows:
-        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
+        html+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
 
-    html += "</table></body></html>"
-    return HTMLResponse(html)
-
-
-# ================= SEARCH =================
-@app.get("/search", response_class=HTMLResponse)
-def search_page(auth: str = Cookie(default=None)):
-    if auth != "ok":
-        return RedirectResponse("/login", status_code=303)
-
-    return HTMLResponse("""
-    <html><body style="background:#111;color:#eee;font-family:Arial">
-    <a href="/">Zpět</a>
-    <h2>Hledání</h2>
-    <form method="post" action="/search">
-        <input name="q" placeholder="Kód / Název / Výrobce">
-        <button>Hledat</button>
-    </form>
-    </body></html>
-    """)
-
-@app.post("/search", response_class=HTMLResponse)
-def search(q: str = Form(...), auth: str = Cookie(default=None)):
-    if auth != "ok":
-        return RedirectResponse("/login", status_code=303)
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT code,name,manufacturer,quantity
-        FROM products
-        WHERE code ILIKE %s OR name ILIKE %s OR manufacturer ILIKE %s
-    """, (f"%{q}%", f"%{q}%", f"%{q}%"))
-
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    html = "<html><body style='background:#111;color:#eee'><a href='/search'>Zpět</a><table border=1>"
-    for r in rows:
-        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
-    html += "</table></body></html>"
-
+    html+="</table></body></html>"
     return HTMLResponse(html)
 
 
@@ -213,20 +232,20 @@ def low(auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn = get_conn()
-    cur = conn.cursor()
-
+    conn=get_conn()
+    cur=conn.cursor()
     cur.execute("SELECT code,name,manufacturer,quantity FROM products WHERE quantity<=min_limit")
-    rows = cur.fetchall()
+    rows=cur.fetchall()
+    cur.close();conn.close()
 
-    cur.close()
-    conn.close()
+    html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
+    html+="<h2>Nízký stav</h2><a href='/'>Zpět</a><table border=1 width=100%>"
+    html+="<tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th></tr>"
 
-    html = "<html><body style='background:#111;color:#eee'><a href='/'>Zpět</a><h2>Nízký stav</h2><table border=1>"
     for r in rows:
-        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td style='color:red'>{r[3]}</td></tr>"
-    html += "</table></body></html>"
+        html+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td style='color:red'>{r[3]}</td></tr>"
 
+    html+="</table></body></html>"
     return HTMLResponse(html)
 
 
@@ -236,32 +255,19 @@ def history(auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn = get_conn()
-    cur = conn.cursor()
-
+    conn=get_conn()
+    cur=conn.cursor()
     cur.execute("SELECT code,change,created_at FROM movements ORDER BY created_at DESC LIMIT 200")
-    rows = cur.fetchall()
+    rows=cur.fetchall()
+    cur.close();conn.close()
 
-    cur.close()
-    conn.close()
+    html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
+    html+="<h2>Historie</h2><a href='/'>Zpět</a><table border=1 width=100%>"
+    html+="<tr><th>Kód</th><th>Změna</th><th>Datum</th></tr>"
 
-    html = "<html><body style='background:#111;color:#eee'><a href='/'>Zpět</a><table border=1>"
     for r in rows:
-        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td></tr>"
-    html += "</table></body></html>"
+        col="lime" if r[1]>0 else "red"
+        html+=f"<tr><td>{r[0]}</td><td style='color:{col}'>{r[1]}</td><td>{r[2]}</td></tr>"
 
+    html+="</table></body></html>"
     return HTMLResponse(html)
-
-
-# ================= BACKUP (bez pádu) =================
-def backup_loop():
-    while True:
-        try:
-            ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-            os.system(f'pg_dump "{DATABASE_URL}" > /tmp/backup_{ts}.sql')
-            print("BACKUP OK")
-        except Exception as e:
-            print("BACKUP ERROR", e)
-        time.sleep(3600)
-
-threading.Thread(target=backup_loop, daemon=True).start()
