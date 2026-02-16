@@ -202,6 +202,63 @@ def api_hist(manufacturer:str):
         timeline[code]["v"].append(timeline[code]["s"])
     return timeline
 
+@app.post("/add")
+def add(
+    code: str = Form(...),
+    name: str = Form(...),
+    manufacturer: str = Form(...),
+    quantity: int = Form(0),
+    min_limit: int = Form(5)
+):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO products(code,name,manufacturer,quantity,min_limit)
+        VALUES(%s,%s,%s,%s,%s)
+    """, (code,name,manufacturer,quantity,min_limit))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return RedirectResponse("/all", status_code=303)
+
+
+@app.post("/change")
+def change(code: str = Form(...), type: str = Form(...)):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
+    row = cur.fetchone()
+    if not row:
+        return RedirectResponse("/all", status_code=303)
+
+    qty = row[0]
+    if type == "add":
+        qty += 1
+        change_val = 1
+    else:
+        qty = max(0, qty - 1)
+        change_val = -1
+
+    cur.execute("UPDATE products SET quantity=%s WHERE code=%s", (qty, code))
+    cur.execute("INSERT INTO movements(code,change) VALUES(%s,%s)", (code, change_val))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    return RedirectResponse("/all", status_code=303)
+
+
+@app.post("/delete_by_code")
+def delete_by_code(code: str = Form(...)):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM products WHERE code=%s", (code,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return RedirectResponse("/all", status_code=303)
+
 
 # ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)
@@ -209,21 +266,82 @@ def all_products(auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn=get_conn()
-    cur=conn.cursor()
-    cur.execute("SELECT code,name,manufacturer,quantity,min_limit FROM products ORDER BY manufacturer,name")
-    rows=cur.fetchall()
-    cur.close();conn.close()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT code,name,manufacturer,quantity,min_limit
+        FROM products
+        ORDER BY manufacturer,name
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
 
-    html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
-    html+="<h2>Produkty</h2><a href='/'>Zpět</a><table border=1 width=100%>"
-    html+="<tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th></tr>"
+    html = """
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <style>
+    body{background:#0f1115;color:#eee;font-family:Inter;margin:0;padding:20px}
+    .top{display:flex;gap:10px;margin-bottom:15px}
+    button{background:#2b3445;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer}
+    button:hover{background:#3b4760}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #222}
+    .card{background:#151922;border-radius:14px;padding:15px;margin-bottom:15px}
+    </style>
+    </head>
+    <body>
 
-    for r in rows:
-        html+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
+    <div class="top">
+        <a href="/"><button>Dashboard</button></a>
+        <a href="/low"><button>Nízký stav</button></a>
+        <a href="/history"><button>Historie</button></a>
+    </div>
 
-    html+="</table></body></html>"
+    <div class="card">
+    <h3>Přidat produkt</h3>
+    <form method="post" action="/add">
+        Kód <input name="code" required>
+        Název <input name="name" required>
+        Výrobce <input name="manufacturer" required>
+        Množství <input type="number" name="quantity" value="0">
+        Min <input type="number" name="min_limit" value="5">
+        <button type="submit">Přidat</button>
+    </form>
+    </div>
+
+    <table>
+    <tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th><th>Akce</th></tr>
+    """
+
+    for code, name, man, qty, minl in rows:
+        html += f"""
+        <tr>
+            <td>{code}</td>
+            <td>{name}</td>
+            <td>{man}</td>
+            <td>{qty}</td>
+            <td>
+
+            <form method="post" action="/change" style="display:inline">
+                <input type="hidden" name="code" value="{code}">
+                <button name="type" value="add">＋</button>
+                <button name="type" value="sub">－</button>
+            </form>
+
+            <form method="post" action="/delete_by_code" style="display:inline">
+                <input type="hidden" name="code" value="{code}">
+                <button style="background:#802020">Smazat</button>
+            </form>
+
+            </td>
+        </tr>
+        """
+
+    html += "</table></body></html>"
     return HTMLResponse(html)
+
 
 
 # ================= LOW =================
