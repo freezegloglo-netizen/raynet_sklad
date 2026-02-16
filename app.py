@@ -1,4 +1,4 @@
-print("APP FILE LOADED")
+print("APP FILE LOADED v2")
 
 from fastapi import FastAPI, Form, Request, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, JSONResponse
