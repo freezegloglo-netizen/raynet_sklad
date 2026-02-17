@@ -11,7 +11,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 PASSWORD = "morava"
 
-USERS = ["Lukáš", "Jirka", "Milan", "Janča"]
+USERS = [
+    ("Lukas", "Lukáš"),
+    ("Jirka", "Jirka"),
+    ("Milan", "Milan"),
+    ("Janca", "Janča")
+]
 
 # ================= DB =================
 def get_conn():
@@ -93,13 +98,13 @@ def select_user(auth: str = Cookie(default=None)):
     <h2>Vyber uživatele</h2>
     """
 
-    for u in USERS:
-        html += f"""
-        <form method="post" action="/set_user" style="margin:10px">
-            <input type="hidden" name="user" value="{u}">
-            <button style="padding:15px 40px;font-size:18px">{u}</button>
-        </form>
-        """
+    for key, label in USERS:
+    html += f"""
+    <form method="post" action="/set_user" style="margin:10px">
+        <input type="hidden" name="user" value="{key}">
+        <button style="padding:15px 40px;font-size:18px">{label}</button>
+    </form>
+    """
 
     html += "</div></body></html>"
     return HTMLResponse(html)
