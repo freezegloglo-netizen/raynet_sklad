@@ -99,10 +99,10 @@ def select_user(auth: str = Cookie(default=None)):
     """
 
     for key, label in USERS:
-    html += f"""
-    <form method="post" action="/set_user" style="margin:10px">
-        <input type="hidden" name="user" value="{key}">
-        <button style="padding:15px 40px;font-size:18px">{label}</button>
+        html += f"""
+        <form method="post" action="/set_user" style="margin:10px">
+            <input type="hidden" name="user" value="{key}">
+            <button style="padding:15px 40px;font-size:18px">{label}</button>
     </form>
     """
 
