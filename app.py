@@ -110,11 +110,18 @@ def select_user(auth: str = Cookie(default=None)):
     return HTMLResponse(html)
 
 
+import urllib.parse
+
 @app.post("/set_user")
 def set_user(user: str = Form(...)):
     r = RedirectResponse("/", status_code=303)
-    r.set_cookie("user", user)
+
+    # encode unicode -> safe ascii
+    safe_user = urllib.parse.quote(user)
+    r.set_cookie("user", safe_user)
+
     return r
+
 
 # ================= DASHBOARD =================
 @app.get("/", response_class=HTMLResponse)
@@ -152,17 +159,61 @@ def home(auth: str = Cookie(default=None)):
     <head>
     <meta charset="utf-8">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-    body{{background:#111;color:#eee;font-family:Arial;margin:0;padding:20px}}
-    .card{{background:#1b1b1b;padding:15px;border-radius:14px;margin-bottom:15px}}
-    button{{background:#333;color:white;border:none;padding:6px 12px;border-radius:8px}}
+    body{{background:#111;color:#eee;font-family:Arial;margin:0}}
+
+    .topbar{{
+        position:sticky;
+        top:0;
+        background:#0f1115;
+        padding:12px;
+        display:flex;
+        gap:10px;
+        border-bottom:1px solid #222;
+        z-index:999;
+    }}
+
+    .topbar button{{
+        background:#1f2a3a;
+        padding:8px 14px;
+        border-radius:10px;
+        border:none;
+        color:white;
+        font-weight:600;
+        cursor:pointer;
+    }}
+
+    .topbar button:hover{{
+        background:#2d3b52;
+    }}
+
+    .content{{padding:20px}}
+
+    .card{{
+        background:#1b1b1b;
+        padding:15px;
+        border-radius:14px;
+        margin-bottom:15px;
+    }}
     </style>
     </head>
 
     <body>
 
+    <!-- TOP MENU -->
+    <div class="topbar">
+        <a href="/"><button>Dashboard</button></a>
+        <a href="/all"><button>Sklad-Kancl</button></a>
+        <a href="/car"><button>Auto</button></a>
+        <a href="/low"><button>Nízký stav</button></a>
+        <a href="/history"><button>Historie</button></a>
+    </div>
+
+    <div class="content">
+
     <div class="card">
-    📦 {total_products} | ⚠ {low_products} | 📈 {today_moves} | 🏭 {manufacturers}
+        📦 {total_products} | ⚠ {low_products} | 📈 {today_moves} | 🏭 {manufacturers}
     </div>
 
     <canvas id="bar"></canvas>
@@ -170,6 +221,8 @@ def home(auth: str = Cookie(default=None)):
     <h3>Historie podle výrobce</h3>
     <select id="man"></select>
     <canvas id="line"></canvas>
+
+    </div>
 
     <script>
     const labels={json.dumps(labels)};
@@ -184,7 +237,12 @@ def home(auth: str = Cookie(default=None)):
         const r=await fetch('/api/manufacturers');
         const data=await r.json();
         let s=document.getElementById('man');
-        data.forEach(m=>{{let o=document.createElement('option');o.value=m;o.textContent=m;s.appendChild(o);}});
+        data.forEach(m=>{{
+            let o=document.createElement('option');
+            o.value=m;
+            o.textContent=m;
+            s.appendChild(o);
+        }});
         if(data.length)loadGraph(data[0]);
     }}
 
@@ -204,15 +262,12 @@ def home(auth: str = Cookie(default=None)):
     loadMan();
     </script>
 
-    <br>
-    <a href="/all"><button>Produkty</button></a>
-    <a href="/low"><button>Nízký stav</button></a>
-    <a href="/history"><button>Historie</button></a>
-
-    </body></html>
+    </body>
+    </html>
     """
 
     return HTMLResponse(html)
+
 
 
 # ================= API =================
@@ -229,6 +284,10 @@ def api_man():
 def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
+
+    import urllib.parse
+    if user:
+        user = urllib.parse.unquote(user)
 
     conn = get_conn()
     cur = conn.cursor()
