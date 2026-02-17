@@ -11,6 +11,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 PASSWORD = "morava"
 
+USERS = ["Lukáš", "Jirka", "Milan", "Janča"]
 
 # ================= DB =================
 def get_conn():
@@ -41,12 +42,19 @@ def init_db():
     );
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS car_stock (
+        id SERIAL PRIMARY KEY,
+        user_name TEXT,
+        code TEXT,
+        quantity INTEGER DEFAULT 0,
+        UNIQUE(user_name, code)
+    );
+    """)
+
     conn.commit()
     cur.close()
     conn.close()
-
-
-init_db()
 
 
 # ================= LOGIN =================
@@ -66,11 +74,42 @@ def login_page():
 @app.post("/login")
 def login(password: str = Form(...)):
     if password == PASSWORD:
-        r = RedirectResponse("/", status_code=303)
+        r = RedirectResponse("/select_user", status_code=303)
         r.set_cookie("auth", "ok")
         return r
     return RedirectResponse("/login", status_code=303)
 
+# ================= USER SELECT =================
+@app.get("/select_user", response_class=HTMLResponse)
+def select_user(auth: str = Cookie(default=None)):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    html = """
+    <html><body style="background:#111;color:#eee;font-family:Arial;
+    display:flex;justify-content:center;align-items:center;height:100vh">
+
+    <div style="text-align:center">
+    <h2>Vyber uživatele</h2>
+    """
+
+    for u in USERS:
+        html += f"""
+        <form method="post" action="/set_user" style="margin:10px">
+            <input type="hidden" name="user" value="{u}">
+            <button style="padding:15px 40px;font-size:18px">{u}</button>
+        </form>
+        """
+
+    html += "</div></body></html>"
+    return HTMLResponse(html)
+
+
+@app.post("/set_user")
+def set_user(user: str = Form(...)):
+    r = RedirectResponse("/", status_code=303)
+    r.set_cookie("user", user)
+    return r
 
 # ================= DASHBOARD =================
 @app.get("/", response_class=HTMLResponse)
@@ -181,6 +220,31 @@ def api_man():
     cur.close();conn.close()
     return data
 
+@app.get("/car", response_class=HTMLResponse)
+def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT code, quantity FROM car_stock
+        WHERE user_name=%s
+        ORDER BY code
+    """, (user,))
+    rows = cur.fetchall()
+
+    html = f"<html><body style='background:#111;color:#eee;font-family:Arial'>"
+    html += f"<h2>Auto — {user}</h2><a href='/'>Zpět</a><table border=1 width=100%>"
+    html += "<tr><th>Kód</th><th>Množství</th></tr>"
+
+    for r in rows:
+        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td></tr>"
+
+    html += "</table></body></html>"
+    return HTMLResponse(html)
+
 
 @app.get("/api/history/{manufacturer}")
 def api_hist(manufacturer:str):
@@ -259,6 +323,28 @@ def delete_by_code(code: str = Form(...)):
     conn.close()
     return RedirectResponse("/all", status_code=303)
 
+@app.post("/to_car")
+def to_car(code: str = Form(...), user: str = Cookie(default=None)):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # odečíst ze skladu
+    cur.execute("UPDATE products SET quantity = quantity - 1 WHERE code=%s AND quantity>0", (code,))
+
+    # přidat do auta
+    cur.execute("""
+        INSERT INTO car_stock(user_name, code, quantity)
+        VALUES(%s,%s,1)
+        ON CONFLICT (user_name, code)
+        DO UPDATE SET quantity = car_stock.quantity + 1
+    """, (user, code))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return RedirectResponse("/all", status_code=303)
+
 
 # ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)
@@ -296,6 +382,7 @@ def all_products(auth: str = Cookie(default=None)):
     <div class="top">
         <a href="/"><button>Dashboard</button></a>
         <a href="/low"><button>Nízký stav</button></a>
+        <a href="/car"><button>Auto</button></a>
         <a href="/history"><button>Historie</button></a>
     </div>
 
@@ -323,6 +410,23 @@ def all_products(auth: str = Cookie(default=None)):
             <td>{man}</td>
             <td>{qty}</td>
             <td>
+
+            <form method="post" action="/change" style="display:inline">
+                <input type="hidden" name="code" value="{code}">
+                <button name="type" value="add">＋</button>
+                <button name="type" value="sub">－</button>
+            </form>
+
+            <form method="post" action="/to_car" style="display:inline">
+                <input type="hidden" name="code" value="{code}">
+                <button style="background:#205080">Auto</button>
+            </form>
+
+            <form method="post" action="/delete_by_code" style="display:inline"
+            onsubmit="return confirm('Opravdu chceš smazat produkt?');">
+                <input type="hidden" name="code" value="{code}">
+                <button style="background:#802020">Smazat</button>
+            </form>
 
             <form method="post" action="/change" style="display:inline">
                 <input type="hidden" name="code" value="{code}">
