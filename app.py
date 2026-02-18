@@ -296,6 +296,8 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
     import urllib.parse
     if user:
         user = urllib.parse.unquote(user)
+    if not user:
+    user = "Lukas"
 
     conn = get_conn()
     cur = conn.cursor()
@@ -358,6 +360,7 @@ def cars(auth: str = Cookie(default=None)):
             WHERE user_name=%s
             ORDER BY code
         """, (key,))
+
 
         rows = cur.fetchall()
 
@@ -467,6 +470,10 @@ def to_car(code: str = Form(...), user: str = Cookie(default=None)):
     import urllib.parse
     if user:
         user = urllib.parse.unquote(user)
+
+    if not user:
+        return RedirectResponse("/select_user", status_code=303)
+
 
     conn = get_conn()
     cur = conn.cursor()
@@ -588,7 +595,8 @@ def all_products(auth: str = Cookie(default=None)):
             </tr>
             """
 
-        html += "</table><br>"
+        html += "</body></html>"
+        return HTMLResponse(html)
 
 
 # ================= LOW =================
@@ -599,17 +607,17 @@ def low(auth: str = Cookie(default=None)):
 
     conn=get_conn()
     cur=conn.cursor()
-    cur.execute("SELECT code,change,user_name,created_at FROM movements ORDER BY created_at DESC LIMIT 200")
+    cur.execute("SELECT code,name,manufacturer,quantity FROM products WHERE quantity<=min_limit")
     rows=cur.fetchall()
     cur.close();conn.close()
 
     html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
     html+="<h2>Nízký stav</h2><a href='/'>Zpět</a><table border=1 width=100%>"
-    html+="<tr><th>Kód</th><th>Změna</th><th>Uživatel</th><th>Datum</th></tr>"
+    html+="<tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th></tr>"
 
     for r in rows:
-        col="lime" if r[1]>0 else "red"
-        html+=f"<tr><td>{r[0]}</td><td style='color:{col}'>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
+    html+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td style='color:red'>{r[3]}</td></tr>"
+
 
 
     html+="</table></body></html>"
