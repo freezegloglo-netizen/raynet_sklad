@@ -43,6 +43,7 @@ def init_db():
         id SERIAL PRIMARY KEY,
         code TEXT,
         change INTEGER,
+        user_name TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """)
@@ -208,13 +209,20 @@ def home(auth: str = Cookie(default=None)):
         <a href="/car"><button>Auto</button></a>
         <a href="/low"><button>Nízký stav</button></a>
         <a href="/history"><button>Historie</button></a>
+        <a href="/cars"><button>Všechna auta</button></a>
     </div>
 
     <div class="content">
 
-    <div class="card">
-        📦 {total_products} | ⚠ {low_products} | 📈 {today_moves} | 🏭 {manufacturers}
+    <div style="display:flex;gap:10px">
+
+    <div class="card">📦<br>{total_products}<br>Produkty</div>
+    <div class="card">⚠<br>{low_products}<br>Nízký stav</div>
+    <div class="card">📈<br>{today_moves}<br>Dnes pohyby</div>
+    <div class="card">🏭<br>{manufacturers}<br>Výrobci</div>
+
     </div>
+
 
     <canvas id="bar"></canvas>
 
@@ -309,6 +317,68 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
     html += "</table></body></html>"
     return HTMLResponse(html)
 
+@app.get("/cars", response_class=HTMLResponse)
+def cars(auth: str = Cookie(default=None)):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    html = """
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <style>
+    body{background:#0f1115;color:#eee;font-family:Arial;margin:0;padding:20px}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
+    .card{background:#151922;border-radius:14px;padding:15px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #222;text-align:left}
+    h3{margin-top:0}
+    </style>
+    </head>
+    <body>
+
+    <a href="/"><button>Zpět</button></a>
+    <h2>🚐 Všechna auta</h2>
+
+    <div class="grid">
+    """
+
+    for key, label in USERS:
+
+        html += f"<div class='card'><h3>{label}</h3>"
+        html += "<table>"
+        html += "<tr><th>Kód</th><th>Množství</th></tr>"
+
+        cur.execute("""
+            SELECT code, quantity
+            FROM car_stock
+            WHERE user_name=%s
+            ORDER BY code
+        """, (key,))
+
+        rows = cur.fetchall()
+
+        if not rows:
+            html += "<tr><td colspan=2 style='color:#777'>Prázdné auto</td></tr>"
+        else:
+            for code, qty in rows:
+                html += f"<tr><td>{code}</td><td>{qty}</td></tr>"
+
+        html += "</table></div>"
+
+    html += """
+    </div>
+    </body>
+    </html>
+    """
+
+    cur.close()
+    conn.close()
+    return HTMLResponse(html)
+
 
 @app.get("/api/history/{manufacturer}")
 def api_hist(manufacturer:str):
@@ -351,7 +421,7 @@ def add(
 
 
 @app.post("/change")
-def change(code: str = Form(...), type: str = Form(...)):
+def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(default=None)):
     conn = get_conn()
     cur = conn.cursor()
 
@@ -361,6 +431,7 @@ def change(code: str = Form(...), type: str = Form(...)):
         return RedirectResponse("/all", status_code=303)
 
     qty = row[0]
+
     if type == "add":
         qty += 1
         change_val = 1
@@ -369,7 +440,10 @@ def change(code: str = Form(...), type: str = Form(...)):
         change_val = -1
 
     cur.execute("UPDATE products SET quantity=%s WHERE code=%s", (qty, code))
-    cur.execute("INSERT INTO movements(code,change) VALUES(%s,%s)", (code, change_val))
+    cur.execute(
+        "INSERT INTO movements(code, change, user_name) VALUES(%s,%s,%s)",
+        (code, change_val, user)
+    )
 
     conn.commit()
     cur.close()
@@ -389,6 +463,11 @@ def delete_by_code(code: str = Form(...)):
 
 @app.post("/to_car")
 def to_car(code: str = Form(...), user: str = Cookie(default=None)):
+   
+    import urllib.parse
+    if user:
+        user = urllib.parse.unquote(user)
+
     conn = get_conn()
     cur = conn.cursor()
 
@@ -426,6 +505,12 @@ def all_products(auth: str = Cookie(default=None)):
     rows = cur.fetchall()
     cur.close()
     conn.close()
+    from collections import defaultdict
+
+    grouped = defaultdict(list)
+    for row in rows:
+        grouped[row[2]].append(row)   # row[2] = manufacturer
+
 
     html = """
     <html>
@@ -448,6 +533,7 @@ def all_products(auth: str = Cookie(default=None)):
         <a href="/low"><button>Nízký stav</button></a>
         <a href="/car"><button>Auto</button></a>
         <a href="/history"><button>Historie</button></a>
+        <a href="/cars"><button>Všechna auta</button></a>
     </div>
 
     <div class="card">
@@ -466,50 +552,43 @@ def all_products(auth: str = Cookie(default=None)):
     <tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th><th>Akce</th></tr>
     """
 
-    for code, name, man, qty, minl in rows:
-        html += f"""
-        <tr>
-            <td>{code}</td>
-            <td>{name}</td>
-            <td>{man}</td>
-            <td>{qty}</td>
-            <td>
+    for man in sorted(grouped):
 
-            <form method="post" action="/change" style="display:inline">
-                <input type="hidden" name="code" value="{code}">
-                <button name="type" value="add">＋</button>
-                <button name="type" value="sub">－</button>
-            </form>
+        html += f"<h3>🏭 {man}</h3>"
+        html += "<table>"
+        html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
 
-            <form method="post" action="/to_car" style="display:inline">
-                <input type="hidden" name="code" value="{code}">
-                <button style="background:#205080">Auto</button>
-            </form>
+        for code, name, manufacturer, qty, minl in grouped[man]:
 
-            <form method="post" action="/delete_by_code" style="display:inline"
-            onsubmit="return confirm('Opravdu chceš smazat produkt?');">
-                <input type="hidden" name="code" value="{code}">
-                <button style="background:#802020">Smazat</button>
-            </form>
+            html += f"""
+            <tr>
+                <td>{code}</td>
+                <td>{name}</td>
+                <td>{qty}</td>
+                <td>
 
-            <form method="post" action="/change" style="display:inline">
-                <input type="hidden" name="code" value="{code}">
-                <button name="type" value="add">＋</button>
-                <button name="type" value="sub">－</button>
-            </form>
+                <form method="post" action="/change" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <button name="type" value="add">＋</button>
+                    <button name="type" value="sub">－</button>
+                </form>
 
-            <form method="post" action="/delete_by_code" style="display:inline">
-                <input type="hidden" name="code" value="{code}">
-                <button style="background:#802020">Smazat</button>
-            </form>
+                <form method="post" action="/to_car" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#205080">Auto</button>
+                </form>
 
-            </td>
-        </tr>
-        """
+                <form method="post" action="/delete_by_code" style="display:inline"
+                onsubmit="return confirm('Opravdu chceš smazat produkt?');">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#802020">Smazat</button>
+                </form>
 
-    html += "</table></body></html>"
-    return HTMLResponse(html)
+                </td>
+            </tr>
+            """
 
+        html += "</table><br>"
 
 
 # ================= LOW =================
@@ -520,16 +599,18 @@ def low(auth: str = Cookie(default=None)):
 
     conn=get_conn()
     cur=conn.cursor()
-    cur.execute("SELECT code,name,manufacturer,quantity FROM products WHERE quantity<=min_limit")
+    cur.execute("SELECT code,change,user_name,created_at FROM movements ORDER BY created_at DESC LIMIT 200")
     rows=cur.fetchall()
     cur.close();conn.close()
 
     html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
     html+="<h2>Nízký stav</h2><a href='/'>Zpět</a><table border=1 width=100%>"
-    html+="<tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th></tr>"
+    html+="<tr><th>Kód</th><th>Změna</th><th>Uživatel</th><th>Datum</th></tr>"
 
     for r in rows:
-        html+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td style='color:red'>{r[3]}</td></tr>"
+        col="lime" if r[1]>0 else "red"
+        html+=f"<tr><td>{r[0]}</td><td style='color:{col}'>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
+
 
     html+="</table></body></html>"
     return HTMLResponse(html)
