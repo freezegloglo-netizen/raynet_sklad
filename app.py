@@ -296,8 +296,9 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
     import urllib.parse
     if user:
         user = urllib.parse.unquote(user)
+
     if not user:
-    user = "Lukas"
+        return RedirectResponse("/select_user", status_code=303)
 
     conn = get_conn()
     cur = conn.cursor()
@@ -318,6 +319,7 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
 
     html += "</table></body></html>"
     return HTMLResponse(html)
+
 
 @app.get("/cars", response_class=HTMLResponse)
 def cars(auth: str = Cookie(default=None)):
