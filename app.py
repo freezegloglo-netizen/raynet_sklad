@@ -608,23 +608,23 @@ def low(auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn=get_conn()
-    cur=conn.cursor()
+    conn = get_conn()
+    cur = conn.cursor()
     cur.execute("SELECT code,name,manufacturer,quantity FROM products WHERE quantity<=min_limit")
-    rows=cur.fetchall()
-    cur.close();conn.close()
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
 
-    html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
-    html+="<h2>Nízký stav</h2><a href='/'>Zpět</a><table border=1 width=100%>"
-    html+="<tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th></tr>"
+    html = "<html><body style='background:#111;color:#eee;font-family:Arial'>"
+    html += "<h2>Nízký stav</h2><a href='/'>Zpět</a><table border=1 width=100%>"
+    html += "<tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th></tr>"
 
     for r in rows:
-    html+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td style='color:red'>{r[3]}</td></tr>"
+        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td style='color:red'>{r[3]}</td></tr>"
 
-
-
-    html+="</table></body></html>"
+    html += "</table></body></html>"
     return HTMLResponse(html)
+
 
 
 # ================= HISTORY =================
