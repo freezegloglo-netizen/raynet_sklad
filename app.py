@@ -4,10 +4,24 @@ from fastapi import FastAPI, Form, Request, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, JSONResponse
 import psycopg2, os, io, json, datetime
 from openpyxl import Workbook
+from psycopg2.pool import SimpleConnectionPool
 
 app = FastAPI()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+db_pool = None
+
+@app.on_event("startup")
+def startup():
+    global db_pool
+    if DATABASE_URL:
+        db_pool = SimpleConnectionPool(
+            minconn=1,
+            maxconn=5,
+            dsn=DATABASE_URL
+        )
+        init_db()
+
 
 PASSWORD = "morava"
 
@@ -20,7 +34,7 @@ USERS = [
 
 # ================= DB =================
 def get_conn():
-    return psycopg2.connect(DATABASE_URL)
+    return db_pool.getconn()
 
 
 def init_db():
@@ -60,7 +74,7 @@ def init_db():
 
     conn.commit()
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
 
 
 # ================= LOGIN =================
@@ -153,7 +167,7 @@ def home(auth: str = Cookie(default=None)):
     manufacturers = cur.fetchone()[0]
 
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
 
     html = f"""
     <html>
@@ -285,7 +299,7 @@ def api_man():
     cur=conn.cursor()
     cur.execute("SELECT DISTINCT manufacturer FROM products ORDER BY manufacturer")
     data=[m[0] or "Neznámý" for m in cur.fetchall()]
-    cur.close();conn.close()
+    cur.close();db_pool.putconn(conn)
     return data
 
 @app.get("/car", response_class=HTMLResponse)
@@ -385,7 +399,7 @@ def cars(auth: str = Cookie(default=None)):
     """
 
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
     return HTMLResponse(html)
 
 
@@ -399,7 +413,7 @@ def api_hist(manufacturer:str):
     ORDER BY created_at
     """,(manufacturer,))
     rows=cur.fetchall()
-    cur.close();conn.close()
+    cur.close();db_pool.putconn(conn)
 
     timeline={}
     for code,ch,ts in rows:
@@ -425,7 +439,7 @@ def add(
     """, (code,name,manufacturer,quantity,min_limit))
     conn.commit()
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
     return RedirectResponse("/all", status_code=303)
 
 
@@ -449,15 +463,17 @@ def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(defa
         change_val = -1
 
     cur.execute("UPDATE products SET quantity=%s WHERE code=%s", (qty, code))
+
     cur.execute(
         "INSERT INTO movements(code, change, user_name) VALUES(%s,%s,%s)",
-        (code, change_val, user)
+        (code, change_val, user or "Unknown")
     )
 
     conn.commit()
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
     return RedirectResponse("/all", status_code=303)
+
 
 
 @app.post("/delete_by_code")
@@ -467,26 +483,44 @@ def delete_by_code(code: str = Form(...)):
     cur.execute("DELETE FROM products WHERE code=%s", (code,))
     conn.commit()
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
     return RedirectResponse("/all", status_code=303)
 
 @app.post("/to_car")
 def to_car(code: str = Form(...), user: str = Cookie(default=None)):
-   
+
     import urllib.parse
-    
+
+    print("TO_CAR CALLED:", code, user)
+
     if user:
         user = urllib.parse.unquote(user)
 
     if not user:
+        print("NO USER COOKIE")
         return RedirectResponse("/select_user", status_code=303)
-
 
     conn = get_conn()
     cur = conn.cursor()
 
-    # odečíst ze skladu
-    cur.execute("UPDATE products SET quantity = quantity - 1 WHERE code=%s AND quantity>0", (code,))
+    # zkus odečíst ze skladu
+    cur.execute("""
+        UPDATE products
+        SET quantity = quantity - 1
+        WHERE code=%s AND quantity > 0
+        RETURNING quantity
+    """, (code,))
+
+    updated = cur.fetchone()
+
+    if not updated:
+        print("NO STOCK AVAILABLE")
+        conn.commit()
+        cur.close()
+        db_pool.putconn(conn)
+        return RedirectResponse("/all", status_code=303)
+
+    print("STOCK AFTER UPDATE:", updated)
 
     # přidat do auta
     cur.execute("""
@@ -496,11 +530,14 @@ def to_car(code: str = Form(...), user: str = Cookie(default=None)):
         DO UPDATE SET quantity = car_stock.quantity + 1
     """, (user, code))
 
+    print("ADDED TO CAR:", user, code)
+
     conn.commit()
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
 
     return RedirectResponse("/all", status_code=303)
+
 
 
 # ================= PRODUCTS =================
@@ -528,7 +565,7 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
     rows = cur.fetchall()
 
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
     from collections import defaultdict
 
     grouped = defaultdict(list)
@@ -575,7 +612,7 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
     <div class="card">
     <h3>Vyhledávání</h3>
     <form method="get" action="/all" style="display:flex;gap:10px">
-        <input name="q" value="{q or ''}" placeholder="Hledat podle kódu nebo výrobce">
+        <input name="q" placeholder="Hledáš něco ?" value="{q or ''}">
         <button type="submit">Hledat</button>
         <a href="/all"><button type="button">Vyčistit filtr</button></a>
     </form>
@@ -637,7 +674,7 @@ def low(auth: str = Cookie(default=None)):
     cur.execute("SELECT code,name,manufacturer,quantity FROM products WHERE quantity<=min_limit")
     rows = cur.fetchall()
     cur.close()
-    conn.close()
+    db_pool.putconn(conn)
 
     html = "<html><body style='background:#111;color:#eee;font-family:Arial'>"
     html += "<h2>Nízký stav</h2><a href='/'>Zpět</a><table border=1 width=100%>"
@@ -661,7 +698,7 @@ def history(auth: str = Cookie(default=None)):
     cur=conn.cursor()
     cur.execute("SELECT code,change,created_at,user_name FROM movements ORDER BY created_at DESC LIMIT 200")
     rows=cur.fetchall()
-    cur.close();conn.close()
+    cur.close();db_pool.putconn(conn)
 
     html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
     html+="<h2>Historie</h2><a href='/'>Zpět</a><table border=1 width=100%>"
