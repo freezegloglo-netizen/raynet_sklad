@@ -314,8 +314,12 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
     html += f"<h2>Auto — {user}</h2><a href='/'>Zpět</a><table border=1 width=100%>"
     html += "<tr><th>Kód</th><th>Množství</th></tr>"
 
-    for r in rows:
-        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td></tr>"
+    if not rows:
+        html += "<tr><td colspan=2 style='color:#777'>Prázdné auto</td></tr>"
+    else:
+        for r in rows:
+            html += f"<tr><td>{r[0]}</td><td>{r[1]}</td></tr>"
+
 
     html += "</table></body></html>"
     return HTMLResponse(html)
@@ -501,18 +505,28 @@ def to_car(code: str = Form(...), user: str = Cookie(default=None)):
 
 # ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)
-def all_products(auth: str = Cookie(default=None)):
+def all_products(auth: str = Cookie(default=None), q: str = None):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT code,name,manufacturer,quantity,min_limit
-        FROM products
-        ORDER BY manufacturer,name
-    """)
+    if q:
+        cur.execute("""
+            SELECT code,name,manufacturer,quantity,min_limit
+            FROM products
+            WHERE code ILIKE %s
+            OR manufacturer ILIKE %s
+            ORDER BY manufacturer,name
+        """, (f"%{q}%", f"%{q}%"))
+    else:
+        cur.execute("""
+            SELECT code,name,manufacturer,quantity,min_limit
+            FROM products
+            ORDER BY manufacturer,name
+        """)
     rows = cur.fetchall()
+
     cur.close()
     conn.close()
     from collections import defaultdict
@@ -546,7 +560,7 @@ def all_products(auth: str = Cookie(default=None)):
         <a href="/cars"><button>Všechna auta</button></a>
     </div>
 
-    <div class="card">
+        <div class="card">
     <h3>Přidat produkt</h3>
     <form method="post" action="/add">
         Kód <input name="code" required>
@@ -558,9 +572,16 @@ def all_products(auth: str = Cookie(default=None)):
     </form>
     </div>
 
-    <table>
-    <tr><th>Kód</th><th>Název</th><th>Výrobce</th><th>Množství</th><th>Akce</th></tr>
+    <div class="card">
+    <h3>Vyhledávání</h3>
+    <form method="get" action="/all" style="display:flex;gap:10px">
+        <input name="q" value="{q or ''}" placeholder="Hledat podle kódu nebo výrobce">
+        <button type="submit">Hledat</button>
+        <a href="/all"><button type="button">Vyčistit filtr</button></a>
+    </form>
+    </div>
     """
+
 
     for man in sorted(grouped):
 
@@ -598,8 +619,11 @@ def all_products(auth: str = Cookie(default=None)):
             </tr>
             """
 
-        html += "</body></html>"
-        return HTMLResponse(html)
+        html += "</table>"
+
+    html += "</body></html>"
+    return HTMLResponse(html)
+
 
 
 # ================= LOW =================
@@ -635,17 +659,17 @@ def history(auth: str = Cookie(default=None)):
 
     conn=get_conn()
     cur=conn.cursor()
-    cur.execute("SELECT code,change,created_at FROM movements ORDER BY created_at DESC LIMIT 200")
+    cur.execute("SELECT code,change,created_at,user_name FROM movements ORDER BY created_at DESC LIMIT 200")
     rows=cur.fetchall()
     cur.close();conn.close()
 
     html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
     html+="<h2>Historie</h2><a href='/'>Zpět</a><table border=1 width=100%>"
-    html+="<tr><th>Kód</th><th>Změna</th><th>Datum</th></tr>"
+    html+="<tr><th>Kód</th><th>Změna</th><th>Datum</th><th>Uživatel</th></tr>"
 
     for r in rows:
         col="lime" if r[1]>0 else "red"
-        html+=f"<tr><td>{r[0]}</td><td style='color:{col}'>{r[1]}</td><td>{r[2]}</td></tr>"
+        html+=f"<tr><td>{r[0]}</td><td style='color:{col}'>{r[1]}</td><td>{r[2]}</td><td>{r[3] or '-'}</td></tr>"
 
     html+="</table></body></html>"
     return HTMLResponse(html)
