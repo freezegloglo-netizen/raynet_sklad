@@ -59,6 +59,9 @@ USERS = [
     ("Milan", "Milan"),
 ]
 
+mode = request.cookies.get("mode", "driver")
+user = request.cookies.get("user")
+
 # ================= DB =================
 
 db_pool = None
@@ -785,26 +788,39 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
                 <td>{qty}</td>
                 <td>
 
-                <form method="post" action="/change" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button name="type" value="add">＋</button>
-                    <button name="type" value="sub">－</button>
-                </form>
+    # + - pouze sklad
+    if mode == "sklad":
+        html += f"""
+        <form method="post" action="/change" style="display:inline">
+            <input type="hidden" name="code" value="{code}">
+            <button name="type" value="add">＋</button>
+            <button name="type" value="sub">－</button>
+        </form>
+        """
 
-                <form method="post" action="/to_car" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#205080">Auto</button>
-                </form>
+    # Auto pouze řidič
+    if mode == "driver":
+        html += f"""
+        <form method="post" action="/to_car" style="display:inline">
+            <input type="hidden" name="code" value="{code}">
+            <button style="background:#205080">Auto</button>
+        </form>
+        """
 
-                <form method="post" action="/delete_by_code" style="display:inline"
-                onsubmit="return confirm('Opravdu chceš smazat produkt?');">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#802020">Smazat</button>
-                </form>
+    # Smazat pouze sklad
+    if mode == "sklad":
+        html += f"""
+        <form method="post" action="/delete_by_code" style="display:inline"
+        onsubmit="return confirm('Opravdu chceš smazat produkt?');">
+            <input type="hidden" name="code" value="{code}">
+            <button style="background:#802020">Smazat</button>
+        </form>
+        """
 
-                </td>
-            </tr>
-            """
+    html += """
+    </td>
+    </tr>
+    """
 
         html += "</table>"
 
