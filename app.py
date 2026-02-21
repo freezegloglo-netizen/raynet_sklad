@@ -772,50 +772,40 @@ def all_products(auth: str = Cookie(default=None),
     """
 
 
-    for man in sorted(grouped):
+    for code, name, manufacturer, qty, minl in grouped[man]:
 
-        html += f"<h3>🏭 {man}</h3>"
-        html += "<table>"
-        html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
+        html += f"""
+        <tr>
+            <td>{code}</td>
+            <td>{name}</td>
+            <td>{qty}</td>
+            <td>
+        """
 
-        for code, name, manufacturer, qty, minl in grouped[man]:
-
+        # SKLAD režim
+        if mode == "sklad":
             html += f"""
-            <tr>
-                <td>{code}</td>
-                <td>{name}</td>
-                <td>{qty}</td>
-                <td>
+            <form method="post" action="/change" style="display:inline">
+                <input type="hidden" name="code" value="{code}">
+                <button name="type" value="add">+</button>
+                <button name="type" value="sub">-</button>
+            </form>
+
+            <form method="post" action="/delete_by_code" style="display:inline"
+                  onsubmit="return confirm('Opravdu chceš smazat produkt?');">
+                <input type="hidden" name="code" value="{code}">
+                <button style="background:#802020">Smazat</button>
+            </form>
             """
 
-    # + - pouze sklad
-    if mode == "sklad":
-        html += f"""
-        <form method="post" action="/change" style="display:inline">
-            <input type="hidden" name="code" value="{code}">
-           <button name="type" value="add">+</button>
-           <button name="type" value="sub">-</button>
-        </form>
-        """
-
-    # Auto pouze řidič
-    if mode == "driver":
-        html += f"""
-        <form method="post" action="/to_car" style="display:inline">
-            <input type="hidden" name="code" value="{code}">
-            <button style="background:#205080">Auto</button>
-        </form>
-        """
-
-    # Smazat pouze sklad
-    if mode == "sklad":
-        html += f"""
-        <form method="post" action="/delete_by_code" style="display:inline"
-        onsubmit="return confirm('Opravdu chceš smazat produkt?');">
-            <input type="hidden" name="code" value="{code}">
-            <button style="background:#802020">Smazat</button>
-        </form>
-        """
+        # DRIVER režim
+        if mode == "driver":
+            html += f"""
+            <form method="post" action="/to_car" style="display:inline">
+                <input type="hidden" name="code" value="{code}">
+                <button style="background:#205080">Auto</button>
+            </form>
+            """
 
         html += """
             </td>
