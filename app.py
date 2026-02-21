@@ -372,10 +372,7 @@ def home(auth: str = Cookie(default=None)):
     </body>
     </html>
     """
-    
-    finally:
-        safe_close(conn, cur)
-    
+        
     return HTMLResponse(html)
 
 
