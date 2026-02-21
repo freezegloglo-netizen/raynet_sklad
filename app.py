@@ -247,7 +247,11 @@ def home(auth: str = Cookie(default=None)):
     cur.execute("SELECT COUNT(DISTINCT manufacturer) FROM products")
     manufacturers = cur.fetchone()[0]
 
-    safe_close(conn, cur)
+    except Exception as e:
+        print("HOME ERROR:", e)
+
+    finally:
+        safe_close(conn, cur)
 
     html = f"""
     <html>
