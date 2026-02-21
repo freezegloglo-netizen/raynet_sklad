@@ -793,8 +793,8 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
         html += f"""
         <form method="post" action="/change" style="display:inline">
             <input type="hidden" name="code" value="{code}">
-            <button name="type" value="add">＋</button>
-            <button name="type" value="sub">－</button>
+           <button name="type" value="add">+</button>
+           <button name="type" value="sub">-</button>
         </form>
         """
 
