@@ -59,9 +59,6 @@ USERS = [
     ("Milan", "Milan"),
 ]
 
-mode = request.cookies.get("mode", "driver")
-user = request.cookies.get("user")
-
 # ================= DB =================
 
 db_pool = None
@@ -696,7 +693,9 @@ def to_car(code: str = Form(...), user: str = Cookie(default=None)):
 
 # ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)
-def all_products(auth: str = Cookie(default=None), q: str = None):
+def all_products(auth: str = Cookie(default=None),
+                 mode: str = Cookie(default="driver"),
+                 q: str = None):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
