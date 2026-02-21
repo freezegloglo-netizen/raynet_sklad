@@ -83,6 +83,51 @@ def safe_close(conn, cur=None):
     except:
         pass
 
+def init_db():
+    conn = None
+    cur = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            id SERIAL PRIMARY KEY,
+            code TEXT,
+            name TEXT,
+            manufacturer TEXT,
+            quantity INTEGER DEFAULT 0,
+            min_limit INTEGER DEFAULT 5
+        );
+        """)
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS movements (
+            id SERIAL PRIMARY KEY,
+            code TEXT,
+            change INTEGER,
+            user_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS car_stock (
+            id SERIAL PRIMARY KEY,
+            user_name TEXT,
+            code TEXT,
+            quantity INTEGER DEFAULT 0,
+            UNIQUE(user_name, code)
+        );
+        """)
+
+        conn.commit()
+
+    except Exception as e:
+        print("DB INIT FAILED:", e)
+
+    finally:
+        safe_close(conn, cur)
 
 @app.on_event("startup")
 def startup():
