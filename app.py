@@ -808,7 +808,7 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
         </form>
         """
 
-   # Smazat pouze sklad
+    # Smazat pouze sklad
     if mode == "sklad":
         html += f"""
         <form method="post" action="/delete_by_code" style="display:inline"
@@ -824,9 +824,8 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
         """
 
     html += "</table>"
-
-html += "</body></html>"
-return HTMLResponse(html)
+    html += "</body></html>"
+    return HTMLResponse(html)
 
 
 # ================= LOW =================
