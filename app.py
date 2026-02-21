@@ -224,28 +224,29 @@ def home(auth: str = Cookie(default=None)):
 
     conn=None
     cur=None
+    
     try:
         conn = get_conn()
         cur = conn.cursor()
 
-    # sloupcový graf
-    cur.execute("SELECT manufacturer, SUM(quantity) FROM products GROUP BY manufacturer ORDER BY manufacturer")
-    data = cur.fetchall()
-    labels = [d[0] or "Neznámý" for d in data]
-    values = [int(d[1]) for d in data]
+        # sloupcový graf
+        cur.execute("SELECT manufacturer, SUM(quantity) FROM products GROUP BY manufacturer ORDER BY manufacturer")
+        data = cur.fetchall()
+        labels = [d[0] or "Neznámý" for d in data]
+        values = [int(d[1]) for d in data]
 
-    # statistiky
-    cur.execute("SELECT COUNT(*) FROM products")
-    total_products = cur.fetchone()[0]
+        # statistiky
+        cur.execute("SELECT COUNT(*) FROM products")
+        total_products = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM products WHERE quantity <= min_limit")
-    low_products = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM products WHERE quantity <= min_limit")
+        low_products = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM movements WHERE DATE(created_at)=CURRENT_DATE")
-    today_moves = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM movements WHERE DATE(created_at)=CURRENT_DATE")
+        today_moves = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(DISTINCT manufacturer) FROM products")
-    manufacturers = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT manufacturer) FROM products")
+        manufacturers = cur.fetchone()[0]
 
     except Exception as e:
         print("HOME ERROR:", e)
