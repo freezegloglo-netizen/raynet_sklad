@@ -787,6 +787,7 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
                 <td>{name}</td>
                 <td>{qty}</td>
                 <td>
+            """
 
     # + - pouze sklad
     if mode == "sklad":
