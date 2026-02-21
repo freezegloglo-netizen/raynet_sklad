@@ -823,7 +823,7 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
     </tr>
     """
 
-        html += "</table>"
+    html += "</table>"
 
     html += "</body></html>"
     return HTMLResponse(html)
