@@ -11,16 +11,44 @@ app = FastAPI()
 DATABASE_URL = os.getenv("DATABASE_URL")
 db_pool = None
 
+
+def safe_close(conn, cur=None):
+    try:
+        if cur:
+            cur.close()
+    except:
+        pass
+
+    try:
+        if conn:
+            db_pool.putconn(conn, close=False)
+    except:
+        pass
+
 @app.on_event("startup")
 def startup():
     global db_pool
-    if DATABASE_URL:
+    print("INIT DB POOL...")
+
+    try:
         db_pool = SimpleConnectionPool(
             minconn=1,
             maxconn=5,
-            dsn=DATABASE_URL
+            dsn=DATABASE_URL + "?sslmode=require"   # Supabase potřebuje SSL
         )
+
+        print("DB POOL READY")
         init_db()
+
+    except Exception as e:
+        print("DB INIT FAILED:", e)
+        db_pool = None
+
+@app.on_event("shutdown")
+def shutdown():
+    global db_pool
+    if db_pool:
+        db_pool.closeall()
 
 
 PASSWORD = "morava"
@@ -29,17 +57,53 @@ USERS = [
     ("Lukas", "Lukáš"),
     ("Jirka", "Jirka"),
     ("Milan", "Milan"),
-    ("Janca", "Janča")
 ]
 
 # ================= DB =================
+
+db_pool = None
+
 def get_conn():
+    if db_pool is None:
+        raise Exception("DB NOT CONNECTED")
+
     return db_pool.getconn()
 
 
-def init_db():
-    conn = get_conn()
-    cur = conn.cursor()
+def safe_close(conn, cur=None):
+    try:
+        if cur:
+            cur.close()
+    except:
+        pass
+
+    try:
+        if conn:
+            db_pool.putconn(conn)
+    except:
+        pass
+
+
+@app.on_event("startup")
+def startup():
+    global db_pool
+    print("INIT DB POOL...")
+
+    db_pool = SimpleConnectionPool(
+        minconn=1,
+        maxconn=10,
+        dsn=DATABASE_URL + "?sslmode=require"
+    )
+
+    print("DB POOL READY")
+    init_db()
+
+
+@app.on_event("shutdown")
+def shutdown():
+    global db_pool
+    if db_pool:
+        db_pool.closeall()
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS products (
@@ -73,10 +137,7 @@ def init_db():
     """)
 
     conn.commit()
-    cur.close()
-    db_pool.putconn(conn)
-
-
+    safe_close(conn, cur)
 # ================= LOGIN =================
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
@@ -121,6 +182,15 @@ def select_user(auth: str = Cookie(default=None)):
     </form>
     """
 
+    # 👇 TLAČÍTKO SKLAD
+    html += """
+    <form method="post" action="/set_sklad" style="margin-top:20px">
+        <button style="padding:15px 40px;font-size:18px;background:#2b5">
+            📦 Přehled / Úprava skladu
+        </button>
+    </form>
+    """
+
     html += "</div></body></html>"
     return HTMLResponse(html)
 
@@ -131,12 +201,20 @@ import urllib.parse
 def set_user(user: str = Form(...)):
     r = RedirectResponse("/", status_code=303)
 
-    # encode unicode -> safe ascii
+    import urllib.parse
     safe_user = urllib.parse.quote(user)
+
     r.set_cookie("user", safe_user)
+    r.set_cookie("mode", "driver")
 
     return r
 
+@app.post("/set_sklad")
+def set_sklad():
+    r = RedirectResponse("/", status_code=303)
+    r.set_cookie("user", "Sklad")
+    r.set_cookie("mode", "sklad")
+    return r
 
 # ================= DASHBOARD =================
 @app.get("/", response_class=HTMLResponse)
@@ -144,8 +222,11 @@ def home(auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn = get_conn()
-    cur = conn.cursor()
+    conn=None
+    cur=None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
 
     # sloupcový graf
     cur.execute("SELECT manufacturer, SUM(quantity) FROM products GROUP BY manufacturer ORDER BY manufacturer")
@@ -166,8 +247,7 @@ def home(auth: str = Cookie(default=None)):
     cur.execute("SELECT COUNT(DISTINCT manufacturer) FROM products")
     manufacturers = cur.fetchone()[0]
 
-    cur.close()
-    db_pool.putconn(conn)
+    safe_close(conn, cur)
 
     html = f"""
     <html>
@@ -287,7 +367,10 @@ def home(auth: str = Cookie(default=None)):
     </body>
     </html>
     """
-
+    
+    finally:
+        safe_close(conn, cur)
+    
     return HTMLResponse(html)
 
 
@@ -299,7 +382,7 @@ def api_man():
     cur=conn.cursor()
     cur.execute("SELECT DISTINCT manufacturer FROM products ORDER BY manufacturer")
     data=[m[0] or "Neznámý" for m in cur.fetchall()]
-    cur.close();db_pool.putconn(conn)
+    safe_close(conn, cur)
     return data
 
 @app.get("/car", response_class=HTMLResponse)
@@ -334,9 +417,13 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
         for r in rows:
             html += f"<tr><td>{r[0]}</td><td>{r[1]}</td></tr>"
 
-
     html += "</table></body></html>"
+
+    
+    safe_close(conn, cur)
+
     return HTMLResponse(html)
+
 
 
 @app.get("/cars", response_class=HTMLResponse)
@@ -398,22 +485,27 @@ def cars(auth: str = Cookie(default=None)):
     </html>
     """
 
-    cur.close()
-    db_pool.putconn(conn)
+    safe_close(conn, cur)
     return HTMLResponse(html)
 
 
 @app.get("/api/history/{manufacturer}")
 def api_hist(manufacturer:str):
-    conn=get_conn()
-    cur=conn.cursor()
-    cur.execute("""
-    SELECT code,change,created_at FROM movements
-    WHERE code IN (SELECT code FROM products WHERE manufacturer=%s)
-    ORDER BY created_at
-    """,(manufacturer,))
-    rows=cur.fetchall()
-    cur.close();db_pool.putconn(conn)
+    conn=None
+    cur=None
+    try:
+        conn=get_conn()
+        cur=conn.cursor()
+        cur.execute("""
+        SELECT code,change,created_at FROM movements
+        WHERE code IN (SELECT code FROM products WHERE manufacturer=%s)
+        ORDER BY created_at
+        """,(manufacturer,))
+        rows=cur.fetchall()
+
+    finally:
+        if cur: cur.close()
+        if conn: db_pool.putconn(conn)
 
     timeline={}
     for code,ch,ts in rows:
@@ -438,43 +530,60 @@ def add(
         VALUES(%s,%s,%s,%s,%s)
     """, (code,name,manufacturer,quantity,min_limit))
     conn.commit()
-    cur.close()
-    db_pool.putconn(conn)
+    safe_close(conn, cur)
     return RedirectResponse("/all", status_code=303)
 
 
 @app.post("/change")
 def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(default=None)):
-    conn = get_conn()
-    cur = conn.cursor()
+    import urllib.parse
 
-    cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
-    row = cur.fetchone()
-    if not row:
-        return RedirectResponse("/all", status_code=303)
+    if user:
+        user = urllib.parse.unquote(user)
 
-    qty = row[0]
+    conn = None
+    cur = None
 
-    if type == "add":
-        qty += 1
-        change_val = 1
-    else:
-        qty = max(0, qty - 1)
-        change_val = -1
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
 
-    cur.execute("UPDATE products SET quantity=%s WHERE code=%s", (qty, code))
+        cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
+        row = cur.fetchone()
+        if not row:
+            return RedirectResponse("/all", status_code=303)
 
-    cur.execute(
-        "INSERT INTO movements(code, change, user_name) VALUES(%s,%s,%s)",
-        (code, change_val, user or "Unknown")
-    )
+        qty = row[0]
 
-    conn.commit()
-    cur.close()
-    db_pool.putconn(conn)
+        if type == "add":
+            qty += 1
+            change_val = 1
+        else:
+            qty = max(0, qty - 1)
+            change_val = -1
+
+        cur.execute("UPDATE products SET quantity=%s WHERE code=%s", (qty, code))
+
+        cur.execute(
+            "INSERT INTO movements(code, change, user_name) VALUES(%s,%s,%s)",
+            (code, change_val, user or "Unknown")
+        )
+
+        conn.commit()
+
+    except Exception as e:
+        print("CHANGE ERROR:", e)
+        if conn:
+            conn.rollback()
+        return HTMLResponse(f"<h1>DB ERROR</h1><pre>{e}</pre>", status_code=500)
+
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            db_pool.putconn(conn)
+
     return RedirectResponse("/all", status_code=303)
-
-
 
 @app.post("/delete_by_code")
 def delete_by_code(code: str = Form(...)):
@@ -482,59 +591,54 @@ def delete_by_code(code: str = Form(...)):
     cur = conn.cursor()
     cur.execute("DELETE FROM products WHERE code=%s", (code,))
     conn.commit()
-    cur.close()
-    db_pool.putconn(conn)
+    safe_close(conn, cur)
     return RedirectResponse("/all", status_code=303)
 
 @app.post("/to_car")
 def to_car(code: str = Form(...), user: str = Cookie(default=None)):
-
     import urllib.parse
-
-    print("TO_CAR CALLED:", code, user)
 
     if user:
         user = urllib.parse.unquote(user)
 
     if not user:
-        print("NO USER COOKIE")
         return RedirectResponse("/select_user", status_code=303)
 
-    conn = get_conn()
-    cur = conn.cursor()
+    conn = None
+    cur = None
 
-    # zkus odečíst ze skladu
-    cur.execute("""
-        UPDATE products
-        SET quantity = quantity - 1
-        WHERE code=%s AND quantity > 0
-        RETURNING quantity
-    """, (code,))
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
 
-    updated = cur.fetchone()
+        cur.execute("""
+            UPDATE products
+            SET quantity = quantity - 1
+            WHERE code=%s AND quantity > 0
+            RETURNING quantity
+        """, (code,))
 
-    if not updated:
-        print("NO STOCK AVAILABLE")
+        if cur.fetchone() is None:
+            conn.commit()
+            return RedirectResponse("/all", status_code=303)
+
+        cur.execute("""
+            INSERT INTO car_stock(user_name, code, quantity)
+            VALUES(%s,%s,1)
+            ON CONFLICT (user_name, code)
+            DO UPDATE SET quantity = car_stock.quantity + 1
+        """, (user, code))
+
         conn.commit()
-        cur.close()
-        db_pool.putconn(conn)
-        return RedirectResponse("/all", status_code=303)
 
-    print("STOCK AFTER UPDATE:", updated)
+    except Exception as e:
+        print("TO_CAR ERROR:", e)
+        if conn:
+            conn.rollback()
+        return HTMLResponse(f"<h1>DB ERROR</h1><pre>{e}</pre>", status_code=500)
 
-    # přidat do auta
-    cur.execute("""
-        INSERT INTO car_stock(user_name, code, quantity)
-        VALUES(%s,%s,1)
-        ON CONFLICT (user_name, code)
-        DO UPDATE SET quantity = car_stock.quantity + 1
-    """, (user, code))
-
-    print("ADDED TO CAR:", user, code)
-
-    conn.commit()
-    cur.close()
-    db_pool.putconn(conn)
+    finally:
+        safe_close(conn, cur)
 
     return RedirectResponse("/all", status_code=303)
 
@@ -564,8 +668,7 @@ def all_products(auth: str = Cookie(default=None), q: str = None):
         """)
     rows = cur.fetchall()
 
-    cur.close()
-    db_pool.putconn(conn)
+    safe_close(conn, cur)
     from collections import defaultdict
 
     grouped = defaultdict(list)
@@ -673,8 +776,7 @@ def low(auth: str = Cookie(default=None)):
     cur = conn.cursor()
     cur.execute("SELECT code,name,manufacturer,quantity FROM products WHERE quantity<=min_limit")
     rows = cur.fetchall()
-    cur.close()
-    db_pool.putconn(conn)
+    safe_close(conn, cur)
 
     html = "<html><body style='background:#111;color:#eee;font-family:Arial'>"
     html += "<h2>Nízký stav</h2><a href='/'>Zpět</a><table border=1 width=100%>"
@@ -694,11 +796,27 @@ def history(auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn=get_conn()
-    cur=conn.cursor()
-    cur.execute("SELECT code,change,created_at,user_name FROM movements ORDER BY created_at DESC LIMIT 200")
-    rows=cur.fetchall()
-    cur.close();db_pool.putconn(conn)
+    conn = None
+    cur = None
+
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT code, change, created_at, COALESCE(user_name, 'Unknown')
+            FROM movements
+            ORDER BY created_at DESC
+            LIMIT 200
+        """)
+        rows = cur.fetchall()
+
+    except Exception as e:
+        print("HISTORY ERROR:", e)
+        return HTMLResponse(f"<h1>DB ERROR</h1><pre>{e}</pre>", status_code=500)
+
+    finally:
+        safe_close(conn, cur)
 
     html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
     html+="<h2>Historie</h2><a href='/'>Zpět</a><table border=1 width=100%>"
@@ -706,7 +824,7 @@ def history(auth: str = Cookie(default=None)):
 
     for r in rows:
         col="lime" if r[1]>0 else "red"
-        html+=f"<tr><td>{r[0]}</td><td style='color:{col}'>{r[1]}</td><td>{r[2]}</td><td>{r[3] or '-'}</td></tr>"
+        html+=f"<tr><td>{r[0]}</td><td style='color:{col}'>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
 
     html+="</table></body></html>"
     return HTMLResponse(html)
