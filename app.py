@@ -375,41 +375,40 @@ def home(request: Request, auth: str = Cookie(default=None)):
     <canvas id="line"></canvas>
 
     </div>
-    """
 
     <script>
-    const labels={json.dumps(labels)};
-    const values={json.dumps(values)};
+    const labels=%s;
+    const values=%s;
 
-    new Chart(document.getElementById('bar'),{{
+    new Chart(document.getElementById('bar'),{
         type:'bar',
-        data:{{labels:labels,datasets:[{{data:values}}]}}
-    }});
+        data:{labels:labels,datasets:[{data:values}]}
+    });
 
-    async function loadMan(){{
+    async function loadMan(){
         const r=await fetch('/api/manufacturers');
         const data=await r.json();
         let s=document.getElementById('man');
-        data.forEach(m=>{{
+        data.forEach(m=>{
             let o=document.createElement('option');
             o.value=m;
             o.textContent=m;
             s.appendChild(o);
-        }});
+        });
         if(data.length)loadGraph(data[0]);
-    }}
+    }
 
-    async function loadGraph(m){{
+    async function loadGraph(m){
         const r=await fetch('/api/history/'+m);
         const j=await r.json();
         let labels=[],datasets=[];
-        Object.keys(j).forEach((k,i)=>{{
+        Object.keys(j).forEach((k,i)=>{
             if(labels.length==0)labels=j[k].t;
-            datasets.push({{label:k,data:j[k].v,fill:false}});
-        }});
+            datasets.push({label:k,data:j[k].v,fill:false});
+        });
         if(window.l)window.l.destroy();
-        window.l=new Chart(document.getElementById('line'),{{type:'line',data:{{labels:labels,datasets:datasets}}}});
-    }}
+        window.l=new Chart(document.getElementById('line'),{type:'line',data:{labels:labels,datasets:datasets}});
+    }
 
     document.getElementById('man').onchange=e=>loadGraph(e.target.value);
     loadMan();
@@ -417,8 +416,8 @@ def home(request: Request, auth: str = Cookie(default=None)):
 
     </body>
     </html>
-    """
-        
+    """ % (json.dumps(labels), json.dumps(values))        
+   
     return HTMLResponse(html)
 
 
