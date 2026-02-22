@@ -772,6 +772,12 @@ def all_products(auth: str = Cookie(default=None),
     """
 
 
+    for man in sorted(grouped):
+
+    html += f"<h3>🏭 {man}</h3>"
+    html += "<table>"
+    html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
+
     for code, name, manufacturer, qty, minl in grouped[man]:
 
         html += f"""
@@ -792,7 +798,7 @@ def all_products(auth: str = Cookie(default=None),
             </form>
 
             <form method="post" action="/delete_by_code" style="display:inline"
-                  onsubmit="return confirm('Opravdu chceš smazat produkt?');">
+            onsubmit="return confirm('Opravdu chceš smazat produkt?');">
                 <input type="hidden" name="code" value="{code}">
                 <button style="background:#802020">Smazat</button>
             </form>
