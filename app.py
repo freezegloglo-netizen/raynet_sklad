@@ -771,8 +771,7 @@ def all_products(auth: str = Cookie(default=None),
     </div>
     """
 
-
-    for man in sorted(grouped):
+for man in sorted(grouped):
 
     html += f"<h3>🏭 {man}</h3>"
     html += "<table>"
