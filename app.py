@@ -771,57 +771,56 @@ def all_products(auth: str = Cookie(default=None),
     </div>
     """
 
-for man in sorted(grouped):
+    for man in sorted(grouped):
 
-    html += f"<h3>🏭 {man}</h3>"
-    html += "<table>"
-    html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
+        html += f"<h3>🏭 {man}</h3>"
+        html += "<table>"
+        html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
 
-    for code, name, manufacturer, qty, minl in grouped[man]:
+        for code, name, manufacturer, qty, minl in grouped[man]:
 
-        html += f"""
-        <tr>
-            <td>{code}</td>
-            <td>{name}</td>
-            <td>{qty}</td>
-            <td>
-        """
-
-        # SKLAD režim
-        if mode == "sklad":
             html += f"""
-            <form method="post" action="/change" style="display:inline">
-                <input type="hidden" name="code" value="{code}">
-                <button name="type" value="add">+</button>
-                <button name="type" value="sub">-</button>
-            </form>
-
-            <form method="post" action="/delete_by_code" style="display:inline"
-            onsubmit="return confirm('Opravdu chceš smazat produkt?');">
-                <input type="hidden" name="code" value="{code}">
-                <button style="background:#802020">Smazat</button>
-            </form>
+            <tr>
+                <td>{code}</td>
+                <td>{name}</td>
+                <td>{qty}</td>
+                <td>
             """
 
-        # DRIVER režim
-        if mode == "driver":
-            html += f"""
-            <form method="post" action="/to_car" style="display:inline">
-                <input type="hidden" name="code" value="{code}">
-                <button style="background:#205080">Auto</button>
-            </form>
+            # SKLAD režim
+            if mode == "sklad":
+                html += f"""
+                <form method="post" action="/change" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <button name="type" value="add">+</button>
+                    <button name="type" value="sub">-</button>
+                </form>
+
+                <form method="post" action="/delete_by_code" style="display:inline"
+                onsubmit="return confirm('Opravdu chceš smazat produkt?');">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#802020">Smazat</button>
+                </form>
+                """
+
+            # DRIVER režim
+            if mode == "driver":
+                html += f"""
+                <form method="post" action="/to_car" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#205080">Auto</button>
+                </form>
+                """
+
+            html += """
+                </td>
+            </tr>
             """
 
-        html += """
-            </td>
-        </tr>
-        """
+        html += "</table>"
 
-    html += "</table>"
-   
-html += "</body></html>"
-return HTMLResponse(html)
-
+    html += "</body></html>"
+    return HTMLResponse(html)
 
 # ================= LOW =================
 @app.get("/low", response_class=HTMLResponse)
