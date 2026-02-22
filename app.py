@@ -329,14 +329,17 @@ def home(request: Request, auth: str = Cookie(default=None)):
 
     # ===== MENU =====
     html += """
-    <div class="menu">
-        <a href="/"><button class="btn">Dashboard</button></a>
-        <a href="/all"><button class="btn">Sklad-Kancl</button></a>
-        <a href="/low"><button class="btn">Nízký stav</button></a>
-        <a href="/history"><button class="btn">Historie</button></a>
-        <a href="/cars"><button class="btn">Všechna auta</button></a>
-    </div>
+    html += '<div class="menu">'
+    html += '<a href="/"><button class="btn">Dashboard</button></a>'
+    html += '<a href="/all"><button class="btn">Sklad-Kancl</button></a>'
+    html += '<a href="/low"><button class="btn">Nízký stav</button></a>'
 
+    if mode == "driver":
+    html += '<a href="/car"><button class="btn">Auto</button></a>'
+
+    html += '<a href="/history"><button class="btn">Historie</button></a>'
+    html += '<a href="/cars"><button class="btn">Všechna auta</button></a>'
+    html += '</div>'
     <div class="content">
     """
 
@@ -433,7 +436,7 @@ def api_man():
     return data
 
 @app.get("/car", response_class=HTMLResponse)
-def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
+def car(request: Request, auth: str = Cookie(default=None), user: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
@@ -448,42 +451,70 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT code, quantity FROM car_stock
+        SELECT code, quantity
+        FROM car_stock
         WHERE user_name=%s
         ORDER BY code
     """, (user,))
     rows = cur.fetchall()
 
-    html = f"<html><body style='background:#111;color:#eee;font-family:Arial'>"
-    html += f"<h2>Auto — {user}</h2><a href='/'>Zpět</a><table border=1 width=100%>"
-    html += "<tr><th>Kód</th><th>Množství</th><th>Akce</th></tr>"
+    html = """
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <style>
+    body{background:#0f1115;color:#eee;font-family:Arial;margin:0;padding:20px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #222}
+    button{background:#2b3445;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer}
+    button:hover{background:#3b4760}
+    </style>
+    </head>
+    <body>
+    """
+
+    # ===== HLAVIČKA =====
+    mode = request.cookies.get("mode", "driver")
+    mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
+
+    html += f"""
+    <div style="margin-bottom:15px">
+        👤 <b>{user}</b> | Režim: <b>{mode_label}</b>
+    </div>
+
+    <a href="/"><button>Zpět</button></a>
+
+    <h2>Auto — {user}</h2>
+
+    <table>
+    <tr><th>Kód</th><th>Množství</th><th>Akce</th></tr>
+    """
 
     if not rows:
         html += "<tr><td colspan=3 style='color:#777'>Prázdné auto</td></tr>"
     else:
-        for r in rows:
+        for code, qty in rows:
             html += f"""
             <tr>
-                <td>{r[0]}</td>
-                <td>{r[1]}</td>
+                <td>{code}</td>
+                <td>{qty}</td>
                 <td>
-                    <form method="post" action="/use_from_car">
-                        <input type="hidden" name="code" value="{r[0]}">
-                        <button style="
-                            background:#802020;
-                            color:#fff;
-                            border:none;
-                            padding:4px 10px;
-                            border-radius:6px;
-                            cursor:pointer;
-                        ">
-                            Použito
-                        </button>
+                    <form method="post" action="/use_from_car" style="display:inline">
+                        <input type="hidden" name="code" value="{code}">
+                        <button>Použito</button>
                     </form>
                 </td>
             </tr>
             """
 
+    html += """
+    </table>
+    </body>
+    </html>
+    """
+
+    safe_close(conn, cur)
+    return HTMLResponse(html)
 
 @app.get("/cars", response_class=HTMLResponse)
 def cars(request: Request, auth: str = Cookie(default=None)):
@@ -633,6 +664,32 @@ def add(
     safe_close(conn, cur)
     return RedirectResponse("/all", status_code=303)
 
+@app.post("/use_from_car")
+def use_from_car(code: str = Form(...),
+                 user: str = Cookie(default=None),
+                 auth: str = Cookie(default=None)):
+
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE car_stock
+        SET quantity = quantity - 1
+        WHERE user_name=%s AND code=%s AND quantity > 0
+    """, (user, code))
+
+    cur.execute("""
+        DELETE FROM car_stock
+        WHERE user_name=%s AND code=%s AND quantity <= 0
+    """, (user, code))
+
+    conn.commit()
+    safe_close(conn, cur)
+
+    return RedirectResponse("/car", status_code=303)
 
 @app.post("/change")
 def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(default=None)):
