@@ -838,7 +838,7 @@ def all_products(auth: str = Cookie(default=None),
     """
    
 
-    html += """
+    html += f"""
     <div class="top">
         <a href="/"><button>Dashboard</button></a>
         <a href="/low"><button>Nízký stav</button></a>
@@ -847,7 +847,7 @@ def all_products(auth: str = Cookie(default=None),
         <a href="/cars"><button>Všechna auta</button></a>
     </div>
 
-        <div class="card">
+    <div class="card">
     <h3>Přidat produkt</h3>
     <form method="post" action="/add">
         Kód <input name="code" required>
@@ -868,7 +868,6 @@ def all_products(auth: str = Cookie(default=None),
     </form>
     </div>
     """
-
     for man in sorted(grouped):
 
         html += f"<h3>🏭 {man}</h3>"
