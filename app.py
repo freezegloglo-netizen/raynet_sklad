@@ -831,9 +831,28 @@ def all_products(request: Request,
                 <td>
             """
 
-            # SKLAD → popup výběr auta
+            # ===== SKLAD =====
             if mode == "sklad":
 
+                # + / -
+                html += f"""
+                <form method="post" action="/change" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <button name="type" value="add">+</button>
+                    <button name="type" value="sub">-</button>
+                </form>
+                """
+
+                # SMAZAT
+                html += f"""
+                <form method="post" action="/delete_by_code" style="display:inline"
+                onsubmit="return confirm('Opravdu smazat produkt?');">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#802020">Smazat</button>
+                </form>
+                """
+
+                # POPUP výběr auta
                 html += f"""
                 <div style="display:inline;position:relative">
 
@@ -866,12 +885,22 @@ def all_products(request: Request,
 
                 html += "</div></div>"
 
-            # DRIVER → nic (jen vidí svoje auto nahoře)
+            # ===== ŘIDIČ =====
+            elif mode == "driver":
 
-            html += "</td></tr>"
+                html += f"""
+                <form method="post" action="/to_car" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#205080">Auto</button>
+                </form>
+                """
+
+            html += """
+                </td>
+            </tr>
+            """
 
         html += "</table>"
-
     # ===== SCRIPT =====
     html += """
     <script>
