@@ -501,7 +501,47 @@ def cars(auth: str = Cookie(default=None)):
     </style>
     </head>
     <body>
+    html = """
+    <html>
+    <head>
+    ...
+    </head>
+    <body>
+    """
 
+    # ===== HLAVIČKA =====
+    user = request.cookies.get("user", "Neznámý")
+    mode = request.cookies.get("mode", "driver")
+    mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
+
+    html += f"""
+    <div style="
+    position:sticky;
+    top:0;
+    background:#0f1115;
+    padding:6px 12px;
+    border-bottom:1px solid #222;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    ">
+
+    <div>
+    Uživatel: <b>{user}</b> | Režim: <b>{mode_label}</b>
+    </div>
+
+    <div>
+    <a href="/login">
+    <button style="background:#333;padding:4px 10px;border-radius:6px">
+    Přepnout uživatele
+    </button>
+    </a>
+    </div>
+
+    </div>
+    """
+   
     <body>
 
     <div style="position:fixed;top:10px;right:15px;z-index:999;">
@@ -665,6 +705,33 @@ def delete_by_code(code: str = Form(...)):
     safe_close(conn, cur)
     return RedirectResponse("/all", status_code=303)
 
+@app.post("/choose_car")
+def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    html = """
+    <html><head><meta charset="utf-8">
+    <style>
+    body{background:#111;color:#eee;font-family:Arial;text-align:center;padding:40px}
+    button{padding:10px 20px;margin:10px;border:none;border-radius:8px;background:#2b5;color:#fff;font-size:16px}
+    </style>
+    </head><body>
+    <h2>Vyber auto</h2>
+    """
+
+    for key, label in USERS:
+        html += f"""
+        <form method="post" action="/to_car">
+            <input type="hidden" name="code" value="{code}">
+            <input type="hidden" name="user" value="{key}">
+            <button>{label}</button>
+        </form>
+        """
+
+    html += "</body></html>"
+    return HTMLResponse(html)
+
 @app.post("/to_car")
 def to_car(code: str = Form(...), user: str = Cookie(default=None)):
     import urllib.parse
@@ -764,7 +831,47 @@ def all_products(auth: str = Cookie(default=None),
     </style>
     </head>
     <body>
+    html = """
+    <html>
+    <head>
+    ...
+    </head>
+    <body>
+    """
 
+    # ===== HLAVIČKA =====
+    user = request.cookies.get("user", "Neznámý")
+    mode = request.cookies.get("mode", "driver")
+    mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
+
+    html += f"""
+    <div style="
+    position:sticky;
+    top:0;
+    background:#0f1115;
+    padding:6px 12px;
+    border-bottom:1px solid #222;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    ">
+
+    <div>
+    Uživatel: <b>{user}</b> | Režim: <b>{mode_label}</b>
+    </div>
+
+    <div>
+    <a href="/login">
+    <button style="background:#333;padding:4px 10px;border-radius:6px">
+    Přepnout uživatele
+    </button>
+    </a>
+    </div>
+
+    </div>
+    """
+   
     <div class="top">
         <a href="/"><button>Dashboard</button></a>
         <a href="/low"><button>Nízký stav</button></a>
