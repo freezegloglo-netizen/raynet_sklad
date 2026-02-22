@@ -16,18 +16,14 @@ def safe_close(conn, cur=None):
     try:
         if cur:
             cur.close()
-    except:
+    except Exception:
         pass
 
     try:
         if conn:
             db_pool.putconn(conn, close=False)
-    except:
+    except Exception:
         pass
-
-    except Exception as e:
-        print("DB INIT FAILED:", e)
-        db_pool = None
 
 @app.on_event("shutdown")
 def shutdown():
@@ -119,15 +115,18 @@ def startup():
     global db_pool
     print("INIT DB POOL...")
 
-    db_pool = SimpleConnectionPool(
-        minconn=1,
-        maxconn=10,
-        dsn=DATABASE_URL + "?sslmode=require"
-    )
+    try:
+        db_pool = SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            dsn=DATABASE_URL + "?sslmode=require"
+        )
+        print("DB POOL READY")
+        init_db()
 
-    print("DB POOL READY")
-    init_db()
-
+    except Exception as e:
+        print("DB INIT FAILED:", e)
+        db_pool = None
 
 @app.on_event("shutdown")
 def shutdown():
