@@ -25,21 +25,6 @@ def safe_close(conn, cur=None):
     except:
         pass
 
-@app.on_event("startup")
-def startup():
-    global db_pool
-    print("INIT DB POOL...")
-
-    try:
-        db_pool = SimpleConnectionPool(
-            minconn=1,
-            maxconn=5,
-            dsn=DATABASE_URL + "?sslmode=require"   # Supabase potřebuje SSL
-        )
-
-        print("DB POOL READY")
-        init_db()
-
     except Exception as e:
         print("DB INIT FAILED:", e)
         db_pool = None
@@ -501,14 +486,7 @@ def cars(auth: str = Cookie(default=None)):
     </style>
     </head>
     <body>
-    html = """
-    <html>
-    <head>
-    ...
-    </head>
-    <body>
     """
-
     # ===== HLAVIČKA =====
     user = request.cookies.get("user", "Neznámý")
     mode = request.cookies.get("mode", "driver")
@@ -831,10 +809,8 @@ def all_products(auth: str = Cookie(default=None),
     </style>
     </head>
     <body>
-    html = """
-    <html>
-    <head>
-    ...
+    """
+
     </head>
     <body>
     """
@@ -872,6 +848,7 @@ def all_products(auth: str = Cookie(default=None),
     </div>
     """
    
+    html += """
     <div class="top">
         <a href="/"><button>Dashboard</button></a>
         <a href="/low"><button>Nízký stav</button></a>
