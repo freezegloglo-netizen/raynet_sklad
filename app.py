@@ -337,14 +337,16 @@ def home(auth: str = Cookie(default=None)):
     <body>
 
     <!-- TOP MENU -->
-    <div class="topbar">
-        <a href="/"><button>Dashboard</button></a>
-        <a href="/all"><button>Sklad-Kancl</button></a>
-        <a href="/car"><button>Auto</button></a>
-        <a href="/low"><button>Nízký stav</button></a>
-        <a href="/history"><button>Historie</button></a>
-        <a href="/cars"><button>Všechna auta</button></a>
-    </div>
+    html += '<div class="top">'
+    html += '<a href="/"><button>Dashboard</button></a>'
+    html += '<a href="/low"><button>Nízký stav</button></a>'
+
+    if mode == "driver":
+        html += '<a href="/car"><button>Auto</button></a>'
+
+    html += '<a href="/history"><button>Historie</button></a>'
+    html += '<a href="/cars"><button>Všechna auta</button></a>'
+    html += '</div>'
 
     <div class="content">
 
@@ -699,11 +701,14 @@ def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
     return HTMLResponse(html)
 
 @app.post("/to_car")
-def to_car(code: str = Form(...), user: str = Cookie(default=None)):
+def to_car(code: str = Form(...), user: str = Form(None), cookie_user: str = Cookie(default=None)):
     import urllib.parse
 
+    # pokud přišel user z popupu → použij ho
     if user:
         user = urllib.parse.unquote(user)
+    else:
+        user = urllib.parse.unquote(cookie_user) if cookie_user else None
 
     if not user:
         return RedirectResponse("/select_user", status_code=303)
@@ -736,7 +741,6 @@ def to_car(code: str = Form(...), user: str = Cookie(default=None)):
         conn.commit()
 
     except Exception as e:
-        print("TO_CAR ERROR:", e)
         if conn:
             conn.rollback()
         return HTMLResponse(f"<h1>DB ERROR</h1><pre>{e}</pre>", status_code=500)
@@ -754,11 +758,13 @@ def all_products(request: Request,
                  auth: str = Cookie(default=None),
                  mode: str = Cookie(default="driver"),
                  q: str = None):
+
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
     conn = get_conn()
     cur = conn.cursor()
+
     if q:
         cur.execute("""
             SELECT code,name,manufacturer,quantity,min_limit
@@ -773,15 +779,14 @@ def all_products(request: Request,
             FROM products
             ORDER BY manufacturer,name
         """)
+
     rows = cur.fetchall()
-
     safe_close(conn, cur)
-    from collections import defaultdict
 
+    from collections import defaultdict
     grouped = defaultdict(list)
     for row in rows:
-        grouped[row[2]].append(row)   # row[2] = manufacturer
-
+        grouped[row[2]].append(row)
 
     html = """
     <html>
@@ -802,47 +807,39 @@ def all_products(request: Request,
 
     # ===== HLAVIČKA =====
     user = request.cookies.get("user", "Neznámý")
-    mode = request.cookies.get("mode", "driver")
     mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
 
     html += f"""
-    <div style="
-    position:sticky;
-    top:0;
-    background:#0f1115;
-    padding:6px 12px;
-    border-bottom:1px solid #222;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    font-size:13px;
-    ">
+    <div style="position:sticky;top:0;background:#0f1115;
+    padding:6px 12px;border-bottom:1px solid #222;
+    display:flex;justify-content:space-between;align-items:center;font-size:13px;">
 
-    <div>
-    Uživatel: <b>{user}</b> | Režim: <b>{mode_label}</b>
-    </div>
+        <div>Uživatel: <b>{user}</b> | Režim: <b>{mode_label}</b></div>
 
-    <div>
-    <a href="/login">
-    <button style="background:#333;padding:4px 10px;border-radius:6px">
-    Přepnout uživatele
-    </button>
-    </a>
-    </div>
-
+        <div>
+            <a href="/login">
+                <button style="background:#333;padding:4px 10px;border-radius:6px">
+                Přepnout uživatele
+                </button>
+            </a>
+        </div>
     </div>
     """
-   
 
+    # ===== MENU =====
+    html += '<div class="top">'
+    html += '<a href="/"><button>Dashboard</button></a>'
+    html += '<a href="/low"><button>Nízký stav</button></a>'
+
+    if mode == "driver":
+        html += '<a href="/car"><button>Auto</button></a>'
+
+    html += '<a href="/history"><button>Historie</button></a>'
+    html += '<a href="/cars"><button>Všechna auta</button></a>'
+    html += '</div>'
+
+    # ===== FORMULÁŘE =====
     html += f"""
-    <div class="top">
-        <a href="/"><button>Dashboard</button></a>
-        <a href="/low"><button>Nízký stav</button></a>
-        <a href="/car"><button>Auto</button></a>
-        <a href="/history"><button>Historie</button></a>
-        <a href="/cars"><button>Všechna auta</button></a>
-    </div>
-
     <div class="card">
     <h3>Přidat produkt</h3>
     <form method="post" action="/add">
@@ -864,8 +861,9 @@ def all_products(request: Request,
     </form>
     </div>
     """
-    for man in sorted(grouped):
 
+    # ===== TABULKY =====
+    for man in sorted(grouped):
         html += f"<h3>🏭 {man}</h3>"
         html += "<table>"
         html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
@@ -880,39 +878,63 @@ def all_products(request: Request,
                 <td>
             """
 
-            # SKLAD režim
+            # SKLAD → popup výběr auta
             if mode == "sklad":
-                html += f"""
-                <form method="post" action="/change" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button name="type" value="add">+</button>
-                    <button name="type" value="sub">-</button>
-                </form>
 
-                <form method="post" action="/delete_by_code" style="display:inline"
-                onsubmit="return confirm('Opravdu chceš smazat produkt?');">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#802020">Smazat</button>
-                </form>
+                html += f"""
+                <div style="display:inline;position:relative">
+
+                    <button onclick="togglePopup('p{code}')" style="background:#205080">
+                        Auto
+                    </button>
+
+                    <div id="p{code}" style="
+                        display:none;
+                        position:absolute;
+                        background:#1b1f27;
+                        border:1px solid #333;
+                        border-radius:8px;
+                        padding:6px;
+                        top:28px;
+                        left:0;
+                        z-index:999;
+                        min-width:120px;
+                    ">
                 """
 
-            # DRIVER režim
-            if mode == "driver":
-                html += f"""
-                <form method="post" action="/to_car" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#205080">Auto</button>
-                </form>
-                """
+                for key, label in USERS:
+                    html += f"""
+                    <form method="post" action="/to_car" style="margin:2px">
+                        <input type="hidden" name="code" value="{code}">
+                        <input type="hidden" name="user" value="{key}">
+                        <button style="width:100%;background:#2b3445">{label}</button>
+                    </form>
+                    """
 
-            html += """
-                </td>
-            </tr>
-            """
+                html += "</div></div>"
+
+            # DRIVER → nic (jen vidí svoje auto nahoře)
+
+            html += "</td></tr>"
 
         html += "</table>"
 
+    # ===== SCRIPT =====
+    html += """
+    <script>
+    function togglePopup(id){
+        var el = document.getElementById(id);
+        if(el.style.display === "block"){
+            el.style.display = "none";
+        } else {
+            el.style.display = "block";
+        }
+    }
+    </script>
+    """
+
     html += "</body></html>"
+
     return HTMLResponse(html)
 
 # ================= LOW =================
