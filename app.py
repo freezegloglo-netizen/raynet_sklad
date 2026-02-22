@@ -456,21 +456,33 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
 
     html = f"<html><body style='background:#111;color:#eee;font-family:Arial'>"
     html += f"<h2>Auto — {user}</h2><a href='/'>Zpět</a><table border=1 width=100%>"
-    html += "<tr><th>Kód</th><th>Množství</th></tr>"
+    html += "<tr><th>Kód</th><th>Množství</th><th>Akce</th></tr>"
 
     if not rows:
-        html += "<tr><td colspan=2 style='color:#777'>Prázdné auto</td></tr>"
+        html += "<tr><td colspan=3 style='color:#777'>Prázdné auto</td></tr>"
     else:
         for r in rows:
-            html += f"<tr><td>{r[0]}</td><td>{r[1]}</td></tr>"
-
-    html += "</table></body></html>"
-
-    
-    safe_close(conn, cur)
-
-    return HTMLResponse(html)
-
+            html += f"""
+            <tr>
+                <td>{r[0]}</td>
+                <td>{r[1]}</td>
+                <td>
+                    <form method="post" action="/use_from_car">
+                        <input type="hidden" name="code" value="{r[0]}">
+                        <button style="
+                            background:#802020;
+                            color:#fff;
+                            border:none;
+                            padding:4px 10px;
+                            border-radius:6px;
+                            cursor:pointer;
+                        ">
+                            Použito
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            """
 
 
 @app.get("/cars", response_class=HTMLResponse)
@@ -708,6 +720,48 @@ def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
 
     html += "</body></html>"
     return HTMLResponse(html)
+
+@app.post("/use_from_car")
+def use_from_car(code: str = Form(...), user: str = Cookie(default=None)):
+    import urllib.parse
+
+    if user:
+        user = urllib.parse.unquote(user)
+
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    conn = None
+    cur = None
+
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+
+        # odečti z auta
+        cur.execute("""
+            UPDATE car_stock
+            SET quantity = quantity - 1
+            WHERE user_name=%s AND code=%s AND quantity > 0
+            RETURNING quantity
+        """, (user, code))
+
+        if cur.fetchone() is None:
+            conn.commit()
+            return RedirectResponse("/car", status_code=303)
+
+        # log pohybu
+        cur.execute("""
+            INSERT INTO movements(code, change, user_name)
+            VALUES(%s, %s, %s)
+        """, (code, -1, user))
+
+        conn.commit()
+
+    finally:
+        safe_close(conn, cur)
+
+    return RedirectResponse("/car", status_code=303)
 
 @app.post("/to_car")
 def to_car(code: str = Form(...), user: str = Form(None), cookie_user: str = Cookie(default=None)):
