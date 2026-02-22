@@ -750,7 +750,8 @@ def to_car(code: str = Form(...), user: str = Cookie(default=None)):
 
 # ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)
-def all_products(auth: str = Cookie(default=None),
+def all_products(request: Request,
+                 auth: str = Cookie(default=None),
                  mode: str = Cookie(default="driver"),
                  q: str = None):
     if auth != "ok":
