@@ -465,7 +465,7 @@ def car(auth: str = Cookie(default=None), user: str = Cookie(default=None)):
 
 
 @app.get("/cars", response_class=HTMLResponse)
-def cars(auth: str = Cookie(default=None)):
+def cars(request: Request, auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
@@ -796,10 +796,6 @@ def all_products(auth: str = Cookie(default=None),
     th,td{padding:10px;border-bottom:1px solid #222}
     .card{background:#151922;border-radius:14px;padding:15px;margin-bottom:15px}
     </style>
-    </head>
-    <body>
-    """
-
     </head>
     <body>
     """
