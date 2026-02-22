@@ -367,16 +367,6 @@ def home(auth: str = Cookie(default=None)):
     </div>
     """
 
-    <div style="display:flex;gap:10px">
-
-    <div class="card">📦<br>{total_products}<br>Produkty</div>
-    <div class="card">⚠<br>{low_products}<br>Nízký stav</div>
-    <div class="card">📈<br>{today_moves}<br>Dnes pohyby</div>
-    <div class="card">🏭<br>{manufacturers}<br>Výrobci</div>
-
-    </div>
-
-
     <canvas id="bar"></canvas>
 
     <h3>Historie podle výrobce</h3>
