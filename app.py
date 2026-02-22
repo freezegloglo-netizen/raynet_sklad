@@ -28,8 +28,12 @@ def safe_close(conn, cur=None):
 @app.on_event("shutdown")
 def shutdown():
     global db_pool
-    if db_pool:
-        db_pool.closeall()
+    try:
+        if db_pool:
+            db_pool.closeall()
+            db_pool = None
+    except:
+        pass
 
 
 PASSWORD = "morava"
@@ -42,27 +46,12 @@ USERS = [
 
 # ================= DB =================
 
-db_pool = None
 
 def get_conn():
     if db_pool is None:
         raise Exception("DB NOT CONNECTED")
 
     return db_pool.getconn()
-
-
-def safe_close(conn, cur=None):
-    try:
-        if cur:
-            cur.close()
-    except:
-        pass
-
-    try:
-        if conn:
-            db_pool.putconn(conn)
-    except:
-        pass
 
 def init_db():
     conn = None
@@ -128,12 +117,6 @@ def startup():
         print("DB INIT FAILED:", e)
         db_pool = None
 
-@app.on_event("shutdown")
-def shutdown():
-    global db_pool
-    if db_pool:
-        db_pool.closeall()
-
     cur.execute("""
     CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
@@ -185,6 +168,7 @@ def logout():
     r = RedirectResponse("/login", status_code=303)
     r.delete_cookie("user")
     r.delete_cookie("mode")
+    r.delete_cookie("auth")
     return r
 
 @app.post("/login")
@@ -337,17 +321,6 @@ def home(auth: str = Cookie(default=None)):
     <body>
 
     <!-- TOP MENU -->
-    html += '<div class="top">'
-    html += '<a href="/"><button>Dashboard</button></a>'
-    html += '<a href="/low"><button>Nízký stav</button></a>'
-
-    if mode == "driver":
-        html += '<a href="/car"><button>Auto</button></a>'
-
-    html += '<a href="/history"><button>Historie</button></a>'
-    html += '<a href="/cars"><button>Všechna auta</button></a>'
-    html += '</div>'
-
     <div class="content">
 
     <div style="display:flex;gap:10px">
