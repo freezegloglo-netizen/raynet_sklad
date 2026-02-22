@@ -5,6 +5,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse,
 import psycopg2, os, io, json, datetime
 from openpyxl import Workbook
 from psycopg2.pool import SimpleConnectionPool
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from io import BytesIO
 
 app = FastAPI()
 
@@ -327,21 +330,20 @@ def home(request: Request, auth: str = Cookie(default=None)):
     </div>
     """
 
-    # ===== MENU =====
-    html += """
+     # ===== MENU =====
     html += '<div class="menu">'
     html += '<a href="/"><button class="btn">Dashboard</button></a>'
     html += '<a href="/all"><button class="btn">Sklad-Kancl</button></a>'
     html += '<a href="/low"><button class="btn">Nízký stav</button></a>'
 
     if mode == "driver":
-    html += '<a href="/car"><button class="btn">Auto</button></a>'
+        html += '<a href="/car"><button class="btn">Auto</button></a>'
 
     html += '<a href="/history"><button class="btn">Historie</button></a>'
     html += '<a href="/cars"><button class="btn">Všechna auta</button></a>'
     html += '</div>'
-    <div class="content">
-    """
+
+    html += '<div class="content">'
 
     # ===== KARTY =====
     html += f"""
@@ -619,6 +621,92 @@ def cars(request: Request, auth: str = Cookie(default=None)):
     safe_close(conn, cur)
     return HTMLResponse(html)
 
+@app.get("/export/products")
+def export_products(auth: str = Cookie(default=None)):
+
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT code, name, manufacturer, quantity, min_limit
+        FROM products
+        ORDER BY manufacturer, name
+    """)
+    rows = cur.fetchall()
+    safe_close(conn, cur)
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    sheets = {}
+
+    for code, name, manufacturer, qty, minl in rows:
+
+        man = manufacturer or "Neznámý"
+
+        if man not in sheets:
+            ws = wb.create_sheet(title=man[:31])
+            ws.append(["Kód", "Název", "Množství", "Min. limit"])
+            sheets[man] = ws
+
+        sheets[man].append([code, name, qty, minl])
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=produkty.xlsx"}
+    )
+
+@app.get("/export/low")
+def export_low(auth: str = Cookie(default=None)):
+
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT code, name, manufacturer, quantity, min_limit
+        FROM products
+        WHERE quantity <= min_limit
+        ORDER BY manufacturer, name
+    """)
+    rows = cur.fetchall()
+    safe_close(conn, cur)
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    sheets = {}
+
+    for code, name, manufacturer, qty, minl in rows:
+
+        man = manufacturer or "Neznámý"
+
+        if man not in sheets:
+            ws = wb.create_sheet(title=man[:31])
+            ws.append(["Kód", "Název", "Množství", "Min. limit"])
+            sheets[man] = ws
+
+        sheets[man].append([code, name, qty, minl])
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=nizky_stav.xlsx"}
+    )
 
 @app.get("/api/history/{manufacturer}")
 def api_hist(manufacturer:str):
@@ -979,6 +1067,20 @@ def all_products(request: Request,
         <button type="submit">Hledat</button>
         <a href="/all"><button type="button">Vyčistit filtr</button></a>
     </form>
+    </div>
+    """
+
+    html += """
+    <div style="margin-bottom:15px">
+
+        <a href="/export/products">
+            <button>Export vše</button>
+        </a>
+
+        <a href="/export/low">
+            <button style="background:#802020">Export nízký stav</button>
+        </a>
+
     </div>
     """
 
