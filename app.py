@@ -249,59 +249,123 @@ def home(auth: str = Cookie(default=None)):
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-    body{{background:#111;color:#eee;font-family:Arial;margin:0}}
+    body{{background:#0f1115;color:#e6e6e6;font-family:Inter,Arial;margin:0}}
 
     .topbar{{
         position:sticky;
         top:0;
-        background:#0f1115;
-        padding:12px;
+        background:#0b0e13;
+        padding:10px 16px;
         display:flex;
-        gap:10px;
-        border-bottom:1px solid #222;
-        z-index:999;
+        justify-content:space-between;
+        align-items:center;
+        border-bottom:1px solid #1f2633;
+        z-index:1000;
     }}
 
-    .topbar button{{
-        background:#1f2a3a;
-        padding:8px 14px;
-        border-radius:10px;
+    .menu{{
+        display:flex;
+        gap:8px;
+        padding:10px 16px;
+        border-bottom:1px solid #1f2633;
+        background:#0f1115;
+    }}
+
+    .btn{{
+        background:#1c2330;
         border:none;
-        color:white;
-        font-weight:600;
+        color:#fff;
+        padding:7px 14px;
+        border-radius:8px;
         cursor:pointer;
+        font-weight:600;
+        transition:0.15s;
     }}
 
-    .topbar button:hover{{
-        background:#2d3b52;
-    }}
+    .btn:hover{{background:#2a3446}}
 
-    .content{{padding:20px}}
+    .content{{padding:18px}}
+
+    .cards{{display:flex;gap:10px;margin-bottom:15px}}
 
     .card{{
-        background:#1b1b1b;
-        padding:15px;
-        border-radius:14px;
-        margin-bottom:15px;
+        background:#151a23;
+        padding:14px;
+        border-radius:12px;
+        min-width:120px;
+        text-align:center;
+        box-shadow:0 0 0 1px #1f2633;
     }}
+
+    .title-small{{color:#9aa4b2;font-size:12px;margin-bottom:4px}}
+    .value-big{{font-size:20px;font-weight:700}}
+
     </style>
     </head>
 
     <body>
+    """
 
-    <body>
+    # ===== HORNÍ BAR =====
+    user = request.cookies.get("user", "Neznámý")
+    mode = request.cookies.get("mode", "driver")
+    mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
 
-    <!-- TOP MENU -->
+    html += f"""
     <div class="topbar">
-        <a href="/"><button>Dashboard</button></a>
-        <a href="/all"><button>Sklad-Kancl</button></a>
-        <a href="/low"><button>Nízký stav</button></a>
-        <a href="/car"><button>Auto</button></a>
-        <a href="/history"><button>Historie</button></a>
-        <a href="/cars"><button>Všechna auta</button></a>
+
+        <div>
+            👤 <b>{user}</b> &nbsp; | &nbsp; Režim: <b>{mode_label}</b>
+        </div>
+
+        <div>
+            <a href="/logout">
+                <button class="btn">Přepnout uživatele</button>
+            </a>
+        </div>
+
+    </div>
+    """
+
+    # ===== MENU =====
+    html += """
+    <div class="menu">
+        <a href="/"><button class="btn">Dashboard</button></a>
+        <a href="/all"><button class="btn">Sklad-Kancl</button></a>
+        <a href="/low"><button class="btn">Nízký stav</button></a>
+        <a href="/history"><button class="btn">Historie</button></a>
+        <a href="/cars"><button class="btn">Všechna auta</button></a>
     </div>
 
     <div class="content">
+    """
+
+    # ===== KARTY =====
+    html += f"""
+    <div class="cards">
+
+        <div class="card">
+            <div class="title-small">Produkty</div>
+            <div class="value-big">{total_products}</div>
+        </div>
+
+        <div class="card">
+            <div class="title-small">Nízký stav</div>
+            <div class="value-big">{low_products}</div>
+        </div>
+
+        <div class="card">
+            <div class="title-small">Dnes pohyby</div>
+            <div class="value-big">{today_moves}</div>
+        </div>
+
+        <div class="card">
+            <div class="title-small">Výrobci</div>
+            <div class="value-big">{manufacturers}</div>
+        </div>
+
+    </div>
+    """
 
     <div style="display:flex;gap:10px">
 
@@ -664,7 +728,7 @@ def to_car(code: str = Form(...), user: str = Form(None), cookie_user: str = Coo
         user = urllib.parse.unquote(cookie_user) if cookie_user else None
 
     if not user:
-        return RedirectResponse("/select_user", status_code=303)
+        return RedirectResponse("/all", status_code=303)
 
     conn = None
     cur = None
