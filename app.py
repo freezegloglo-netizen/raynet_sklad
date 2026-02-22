@@ -289,7 +289,18 @@ def home(auth: str = Cookie(default=None)):
 
     <body>
 
+    <body>
+
     <!-- TOP MENU -->
+    <div class="topbar">
+        <a href="/"><button>Dashboard</button></a>
+        <a href="/all"><button>Sklad-Kancl</button></a>
+        <a href="/low"><button>Nízký stav</button></a>
+        <a href="/car"><button>Auto</button></a>
+        <a href="/history"><button>Historie</button></a>
+        <a href="/cars"><button>Všechna auta</button></a>
+    </div>
+
     <div class="content">
 
     <div style="display:flex;gap:10px">
