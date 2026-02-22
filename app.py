@@ -110,47 +110,16 @@ def startup():
             maxconn=10,
             dsn=DATABASE_URL + "?sslmode=require"
         )
+
         print("DB POOL READY")
-        init_db()
+
+        init_db()  # ← TADY se vytvoří tabulky
 
     except Exception as e:
         print("DB INIT FAILED:", e)
-        db_pool = None
+        db_pool = None# 
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        code TEXT,
-        name TEXT,
-        manufacturer TEXT,
-        quantity INTEGER DEFAULT 0,
-        min_limit INTEGER DEFAULT 5
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS movements (
-        id SERIAL PRIMARY KEY,
-        code TEXT,
-        change INTEGER,
-        user_name TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS car_stock (
-        id SERIAL PRIMARY KEY,
-        user_name TEXT,
-        code TEXT,
-        quantity INTEGER DEFAULT 0,
-        UNIQUE(user_name, code)
-    );
-    """)
-
-    conn.commit()
-    safe_close(conn, cur)
-# ================= LOGIN =================
+================= LOGIN =================
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
     return """
