@@ -837,7 +837,8 @@ def all_products(auth: str = Cookie(default=None),
     </div>
     """
    
-    html += f"""
+
+    html += """
     <div class="top">
         <a href="/"><button>Dashboard</button></a>
         <a href="/low"><button>Nízký stav</button></a>
