@@ -119,7 +119,7 @@ def startup():
         print("DB INIT FAILED:", e)
         db_pool = None# 
 
-================= LOGIN =================
+# ================= LOGIN =================
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
     return """
