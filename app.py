@@ -497,6 +497,7 @@ def cars(request: Request, auth: str = Cookie(default=None)):
     </head>
     <body>
     """
+
     # ===== HLAVIČKA =====
     user = request.cookies.get("user", "Neznámý")
     mode = request.cookies.get("mode", "driver")
