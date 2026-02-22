@@ -509,20 +509,23 @@ def cars(auth: str = Cookie(default=None)):
     Uživatel: <b>{user}</b> | Režim: <b>{mode_label}</b>
     </div>
 
-    <div>
-    <a href="/login">
-    <button style="background:#333;padding:4px 10px;border-radius:6px">
-    Přepnout uživatele
-    </button>
-    </a>
-    </div>
-
+    html += """
+    <div style="position:fixed;top:10px;right:15px;z-index:999;">
+        <a href="/logout">
+            <button style="
+                background:#1f2937;
+                color:#fff;
+                border:none;
+                padding:6px 12px;
+                border-radius:8px;
+                font-size:12px;
+                cursor:pointer;
+            ">
+                Přepnout uživatele
+            </button>
+        </a>
     </div>
     """
-   
-    <body>
-
-    <div style="position:fixed;top:10px;right:15px;z-index:999;">
         <a href="/logout">
             <button style="
                 background:#1f2937;
