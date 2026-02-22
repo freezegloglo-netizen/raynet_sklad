@@ -818,8 +818,9 @@ for man in sorted(grouped):
         """
 
     html += "</table>"
-    html += "</body></html>"
-    return HTMLResponse(html)
+   
+html += "</body></html>"
+return HTMLResponse(html)
 
 
 # ================= LOW =================
