@@ -335,6 +335,8 @@ def home(request: Request, auth: str = Cookie(default=None)):
     html += '<a href="/"><button class="btn">Dashboard</button></a>'
     html += '<a href="/all"><button class="btn">Sklad-Kancl</button></a>'
     html += '<a href="/low"><button class="btn">Nízký stav</button></a>'
+    html += '<a href="/export/products"><button class="btn">Excel Produkty</button></a>'
+    html += '<a href="/export/low"><button class="btn">Excel Nízký stav</button></a>'
 
     if mode == "driver":
         html += '<a href="/car"><button class="btn">Auto</button></a>'
