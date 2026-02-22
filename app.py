@@ -206,7 +206,7 @@ def set_sklad():
 
 # ================= DASHBOARD =================
 @app.get("/", response_class=HTMLResponse)
-def home(auth: str = Cookie(default=None)):
+def home(request: Request, auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
@@ -367,6 +367,7 @@ def home(auth: str = Cookie(default=None)):
     </div>
     """
 
+    html += """
     <canvas id="bar"></canvas>
 
     <h3>Historie podle výrobce</h3>
@@ -374,6 +375,7 @@ def home(auth: str = Cookie(default=None)):
     <canvas id="line"></canvas>
 
     </div>
+    """
 
     <script>
     const labels={json.dumps(labels)};
