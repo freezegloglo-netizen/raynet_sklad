@@ -1255,6 +1255,48 @@ def all_products(request: Request,
     </script>
     """
 
+    html += """
+    <script>
+
+    // ===== ULOŽENÍ SCROLLU A FILTRU =====
+    document.querySelectorAll("form").forEach(form => {
+        form.addEventListener("submit", function () {
+
+            // uloží scroll pozici
+            localStorage.setItem("scrollPosition", window.scrollY);
+
+            // uloží hodnotu filtru q
+            const searchInput = document.querySelector("input[name='q']");
+            if (searchInput) {
+                localStorage.setItem("searchValue", searchInput.value);
+            }
+
+        });
+    });
+
+    // ===== OBNOVENÍ PO NAČTENÍ STRÁNKY =====
+    window.addEventListener("load", function () {
+
+        // obnov filtr
+        const savedSearch = localStorage.getItem("searchValue");
+        if (savedSearch) {
+            const searchInput = document.querySelector("input[name='q']");
+            if (searchInput && !searchInput.value) {
+                searchInput.value = savedSearch;
+            }
+        }
+
+        // obnov scroll
+        const savedScroll = localStorage.getItem("scrollPosition");
+        if (savedScroll) {
+            window.scrollTo(0, parseInt(savedScroll));
+        }
+
+    });
+
+    </script>
+    """
+
     html += "</body></html>"
 
     return HTMLResponse(html)
