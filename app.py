@@ -1022,7 +1022,39 @@ def to_car(code: str = Form(...),
 
     return RedirectResponse("/all", status_code=303)
 
+@app.post("/set_quantity")
+def set_quantity(code: str = Form(...),
+                 quantity: int = Form(...),
+                 auth: str = Cookie(default=None),
+                 user: str = Cookie(default=None)):
 
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
+    row = cur.fetchone()
+
+    if not row:
+        safe_close(conn, cur)
+        return RedirectResponse("/all", status_code=303)
+
+    old_qty = row[0]
+    diff = quantity - old_qty
+
+    cur.execute("UPDATE products SET quantity=%s WHERE code=%s", (quantity, code))
+
+    cur.execute(
+        "INSERT INTO movements(code, change, user_name) VALUES(%s,%s,%s)",
+        (code, diff, user or "Unknown")
+    )
+
+    conn.commit()
+    safe_close(conn, cur)
+
+    return RedirectResponse("/all", status_code=303)
 
 # ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)
@@ -1148,108 +1180,68 @@ def all_products(request: Request,
     </div>
     """
 
-    # ===== TABULKY =====
-    for man in sorted(grouped):
-        html += f"<h3>🏭 {man}</h3>"
-        html += "<table>"
-        html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
+# ===== TABULKY =====
+for man in sorted(grouped):
 
-        for code, name, manufacturer, qty, minl in grouped[man]:
+    html += f"<h3>🏭 {man}</h3>"
+    html += "<table>"
+    html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
 
-            html += f"""
-            <tr>
-                <td>{code}</td>
-                <td>{name}</td>
-            """
+    for code, name, manufacturer, qty, minl in grouped[man]:
 
+        html += f"""
+        <tr>
+            <td>{code}</td>
+            <td>{name}</td>
+        """
+
+        # ===== MNOŽSTVÍ =====
         if mode == "sklad":
             html += f"""
-                <td>
-                    <form method="post" action="/set_quantity" style="display:inline">
-                        <input type="hidden" name="code" value="{code}">
-                        <input type="number" name="quantity" value="{qty}"
-                               style="width:70px;background:#1c2330;color:#fff;border:1px solid #333;border-radius:6px;padding:3px">
-                        <button style="background:#205080">OK</button>
-                    </form>
-                </td>
+            <td>
+                <form method="post" action="/set_quantity" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <input type="number" name="quantity" value="{qty}"
+                        style="width:70px;background:#1c2330;color:#fff;border:1px solid #333;border-radius:6px;padding:3px">
+                    <button style="background:#205080">OK</button>
+                </form>
+            </td>
             """
         else:
             html += f"<td>{qty}</td>"
 
-        html += """
-                <td>
-        """
-            # ===== SKLAD =====
-            if mode == "sklad":
+        html += "<td>"
 
-                # + / -
-                html += f"""
-                <form method="post" action="/change" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button name="type" value="add">+</button>
-                    <button name="type" value="sub">-</button>
-                </form>
-                """
+        # ===== SKLAD =====
+        if mode == "sklad":
 
-                # SMAZAT
-                html += f"""
-                <form method="post" action="/delete_by_code" style="display:inline"
+            html += f"""
+            <form method="post" action="/change" style="display:inline">
+                <input type="hidden" name="code" value="{code}">
+                <button name="type" value="add">+</button>
+                <button name="type" value="sub">-</button>
+            </form>
+
+            <form method="post" action="/delete_by_code" style="display:inline"
                 onsubmit="return confirm('Opravdu smazat produkt?');">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#802020">Smazat</button>
-                </form>
-                """
-
-                # POPUP výběr auta
-                html += f"""
-                <div style="display:inline;position:relative">
-
-                    <button onclick="togglePopup('p{code}')" style="background:#205080">
-                        Auto
-                    </button>
-
-                    <div id="p{code}" style="
-                        display:none;
-                        position:absolute;
-                        background:#1b1f27;
-                        border:1px solid #333;
-                        border-radius:8px;
-                        padding:6px;
-                        top:28px;
-                        left:0;
-                        z-index:999;
-                        min-width:120px;
-                    ">
-                """
-
-                for key, label in USERS:
-                    html += f"""
-                    <form method="post" action="/to_car" style="margin:2px">
-                        <input type="hidden" name="code" value="{code}">
-                        <input type="hidden" name="user" value="{key}">
-                        <button style="width:100%;background:#2b3445">{label}</button>
-                    </form>
-                    """
-
-                html += "</div></div>"
-
-            # ===== ŘIDIČ =====
-            elif mode == "driver":
-
-                html += f"""
-                <form method="post" action="/to_car" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#205080">Auto</button>
-                </form>
-                """
-
-            html += """
-                </td>
-            </tr>
+                <input type="hidden" name="code" value="{code}">
+                <button style="background:#802020">Smazat</button>
+            </form>
             """
 
-        html += "</table>"
-    # ===== SCRIPT =====
+        # ===== ŘIDIČ =====
+        elif mode == "driver":
+
+            html += f"""
+            <form method="post" action="/to_car" style="display:inline">
+                <input type="hidden" name="code" value="{code}">
+                <button style="background:#205080">Auto</button>
+            </form>
+            """
+
+        html += "</td></tr>"
+
+    html += "</table>"    # ===== SCRIPT =====
     html += """
     <script>
     function togglePopup(id){
