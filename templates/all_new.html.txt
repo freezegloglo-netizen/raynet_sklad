@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+    <h2>Sklad – Nový SaaS Layout</h2>
+    Pokud vidíš sidebar vlevo a tento box, architektura funguje.
+</div>
+
+{% endblock %}

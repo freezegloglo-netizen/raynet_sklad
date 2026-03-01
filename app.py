@@ -8,12 +8,16 @@ from psycopg2.pool import SimpleConnectionPool
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from io import BytesIO
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 db_pool = None
 
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def safe_close(conn, cur=None):
     try:
@@ -1424,3 +1428,22 @@ def history(request: Request, auth: str = Cookie(default=None)):
     html += "</table></body></html>"
 
     return HTMLResponse(html)
+
+@app.get("/all_new", response_class=HTMLResponse)
+def all_new(request: Request, auth: str = Cookie(default=None)):
+
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    user = request.cookies.get("user", "Neznámý")
+    mode = request.cookies.get("mode", "driver")
+
+    return templates.TemplateResponse(
+        "all_new.html",
+        {
+            "request": request,
+            "title": "Sklad",
+            "user": user,
+            "mode": mode
+        }
+    )
