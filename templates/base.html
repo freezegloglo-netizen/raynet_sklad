@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 </head>
 <body>
 
@@ -15,11 +15,11 @@
         </div>
 
         <nav>
-            <a href="/">Dashboard</a>
-            <a href="/all_new">Sklad</a>
-            <a href="/low">Nízký stav</a>
-            <a href="/history">Historie</a>
-            <a href="/cars">Auta</a>
+            <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
+            <a href="/all" class="{% if request.url.path.startswith('/all') %}active{% endif %}">Sklad</a>
+            <a href="/low" class="{% if request.url.path == '/low' %}active{% endif %}">Nízký stav</a>
+            <a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">Historie</a>
+            <a href="/cars" class="{% if request.url.path == '/cars' %}active{% endif %}">Auta</a>
         </nav>
 
         <div class="sidebar-footer">
