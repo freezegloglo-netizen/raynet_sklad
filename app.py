@@ -950,7 +950,13 @@ def to_car(code: str = Form(...),
         if cur.fetchone() is None:
             conn.commit()
             return RedirectResponse("/all", status_code=303)
-
+                              
+        # 🔹 ZÁPIS DO HISTORIE – přesun do auta
+        cur.execute("""
+            INSERT INTO movements(code, change, user_name)
+            VALUES(%s, %s, %s)
+        """, (code, -1, final_user))               
+                          
         cur.execute("""
             INSERT INTO car_stock(user_name, code, quantity)
             VALUES(%s,%s,1)
