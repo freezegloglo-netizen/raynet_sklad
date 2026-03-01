@@ -928,7 +928,7 @@ def to_car(code: str = Form(...),
 
     if user:
         final_user = urllib.parse.unquote(user)
-    elif cookie_user:
+    elif user_cookie:
         final_user = urllib.parse.unquote(user_cookie)
 
     if not final_user:
