@@ -1254,7 +1254,8 @@ def all_products(request: Request,
 
     return HTMLResponse(html)
 
-    # ================= LOW =================
+
+# ================= LOW =================
 @app.get("/low", response_class=HTMLResponse)
 def low(auth: str = Cookie(default=None)):
     if auth != "ok":
