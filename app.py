@@ -835,6 +835,52 @@ def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(defa
 
     return RedirectResponse("/all", status_code=303)
 
+@app.post("/set_quantity")
+def set_quantity(code: str = Form(...),
+                 quantity: int = Form(...),
+                 mode: str = Cookie(default=None),
+                 auth: str = Cookie(default=None)):
+
+    if auth != "ok" or mode != "sklad":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = None
+    cur = None
+
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+
+        # zjisti původní stav
+        cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
+        row = cur.fetchone()
+        if not row:
+            return RedirectResponse("/all", status_code=303)
+
+        old_qty = row[0]
+        difference = quantity - old_qty
+
+        # nastav nové množství
+        cur.execute("""
+            UPDATE products
+            SET quantity=%s
+            WHERE code=%s
+        """, (quantity, code))
+
+        # loguj změnu do historie
+        if difference != 0:
+            cur.execute("""
+                INSERT INTO movements(code, change, user_name)
+                VALUES(%s,%s,'Sklad')
+            """, (code, difference))
+
+        conn.commit()
+
+    finally:
+        safe_close(conn, cur)
+
+    return RedirectResponse("/all", status_code=303)
+
 @app.post("/delete_by_code")
 def delete_by_code(code: str = Form(...)):
     conn = get_conn()
@@ -1114,10 +1160,25 @@ def all_products(request: Request,
             <tr>
                 <td>{code}</td>
                 <td>{name}</td>
-                <td>{qty}</td>
-                <td>
             """
 
+        if mode == "sklad":
+            html += f"""
+                <td>
+                    <form method="post" action="/set_quantity" style="display:inline">
+                        <input type="hidden" name="code" value="{code}">
+                        <input type="number" name="quantity" value="{qty}"
+                               style="width:70px;background:#1c2330;color:#fff;border:1px solid #333;border-radius:6px;padding:3px">
+                        <button style="background:#205080">OK</button>
+                    </form>
+                </td>
+            """
+        else:
+            html += f"<td>{qty}</td>"
+
+        html += """
+                <td>
+        """
             # ===== SKLAD =====
             if mode == "sklad":
 
