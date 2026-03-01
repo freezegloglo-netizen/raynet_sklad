@@ -1062,10 +1062,12 @@ def set_quantity(code: str = Form(...),
 
 # ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)
-def all_products(request: Request,
-                 auth: str = Cookie(default=None),
-                 mode: str = Cookie(default="driver"),
-                 q: str = None):
+def all_products(
+    request: Request,
+    auth: str = Cookie(default=None),
+    mode: str = Cookie(default="driver"),
+    q: str = None
+):
 
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
@@ -1093,218 +1095,30 @@ def all_products(request: Request,
 
     from collections import defaultdict
     grouped = defaultdict(list)
+
     for row in rows:
-        grouped[row[2]].append(row)
+        grouped[row[2] or "Neznámý"].append({
+            "code": row[0],
+            "name": row[1],
+            "manufacturer": row[2] or "Neznámý",
+            "quantity": row[3],
+            "min_limit": row[4]
+        })
 
-    html = """
-    <html>
-    <head>
-    <meta charset="utf-8">
-    <style>
-    body{background:#0f1115;color:#eee;font-family:Inter;margin:0;padding:20px}
-    .top{display:flex;gap:10px;margin-bottom:15px}
-    button{background:#2b3445;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer}
-    button:hover{background:#3b4760}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px;border-bottom:1px solid #222}
-    .card{background:#151922;border-radius:14px;padding:15px;margin-bottom:15px}
-    </style>
-    </head>
-    <body>
-    """
-
-    # ===== HLAVIČKA =====
     user = request.cookies.get("user", "Neznámý")
     mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
 
-    html += f"""
-    <div style="position:sticky;top:0;background:#0f1115;
-    padding:6px 12px;border-bottom:1px solid #222;
-    display:flex;justify-content:space-between;align-items:center;font-size:13px;">
-
-        <div>Uživatel: <b>{user}</b> | Režim: <b>{mode_label}</b></div>
-
-        <div>
-            <a href="/login">
-                <button style="background:#333;padding:4px 10px;border-radius:6px">
-                Přepnout uživatele
-                </button>
-            </a>
-        </div>
-    </div>
-    """
-
-    # ===== MENU =====
-    html += '<div class="top">'
-    html += '<a href="/"><button>Dashboard</button></a>'
-    html += '<a href="/low"><button>Nízký stav</button></a>'
-
-    if mode == "driver":
-        html += '<a href="/car"><button>Auto</button></a>'
-
-    html += '<a href="/history"><button>Historie</button></a>'
-    html += '<a href="/cars"><button>Všechna auta</button></a>'
-    html += '</div>'
-
-    # ===== FORMULÁŘE =====
-    html += f"""
-    <div class="card">
-    <h3>Přidat produkt</h3>
-    <form method="post" action="/add">
-        Kód <input name="code" required>
-        Název <input name="name" required>
-        Výrobce <input name="manufacturer" required>
-        Množství <input type="number" name="quantity" value="0">
-        Min <input type="number" name="min_limit" value="5">
-        <button type="submit">Přidat</button>
-    </form>
-    </div>
-
-    <div class="card">
-    <h3>Vyhledávání</h3>
-    <form method="get" action="/all" style="display:flex;gap:10px">
-        <input name="q" placeholder="Hledáš něco?" value="{q if q else ''}">
-        <button type="submit">Hledat</button>
-        <a href="/all"><button type="button">Vyčistit filtr</button></a>
-    </form>
-    </div>
-    """
-
-    html += """
-    <div style="margin-bottom:15px">
-
-        <a href="/export/products">
-            <button>Export vše</button>
-        </a>
-
-        <a href="/export/low">
-            <button style="background:#802020">Export nízký stav</button>
-        </a>
-
-    </div>
-    """
-
-    # ===== TABULKY =====
-    for man in sorted(grouped):
-
-        html += f"<h3>🏭 {man}</h3>"
-        html += "<table>"
-        html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
-
-        for code, name, manufacturer, qty, minl in grouped[man]:
-
-            html += f"""
-            <tr>
-                <td>{code}</td>
-                <td>{name}</td>
-            """
-
-            if mode == "sklad":
-                html += f"""
-                <td>
-                    <form method="post" action="/set_quantity" style="display:inline">
-                        <input type="hidden" name="code" value="{code}">
-                        <input type="number" name="quantity" value="{qty}"
-                            style="width:70px;background:#1c2330;color:#fff;border:1px solid #333;border-radius:6px;padding:3px">
-                        <button style="background:#205080">OK</button>
-                    </form>
-                </td>
-                """
-            else:
-                html += f"<td>{qty}</td>"
-
-            html += "<td>"
-
-            if mode == "sklad":
-                html += f"""
-                <form method="post" action="/change" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button name="type" value="add">+</button>
-                    <button name="type" value="sub">-</button>
-                </form>
-
-                <form method="post" action="/delete_by_code" style="display:inline"
-                    onsubmit="return confirm('Opravdu smazat produkt?');">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#802020">Smazat</button>
-                </form>
-
-                <form method="post" action="/choose_car" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#205080">Auto</button>
-                </form>
-                """
-            else:
-                html += f"""
-                <form method="post" action="/to_car" style="display:inline">
-                    <input type="hidden" name="code" value="{code}">
-                    <button style="background:#205080">Auto</button>
-                </form>
-                """
-
-            html += "</td></tr>"
-
-        html += "</table>"
-
-    html += """
-    <script>
-    function togglePopup(id){
-        var el = document.getElementById(id);
-        if(el.style.display === "block"){
-            el.style.display = "none";
-        } else {
-            el.style.display = "block";
+    return templates.TemplateResponse(
+        "all.html",
+        {
+            "request": request,
+            "title": "Sklad",
+            "user": user,
+            "mode": mode_label,
+            "grouped": grouped,
+            "mode_raw": mode
         }
-    }
-    </script>
-    """
-
-    html += """
-    <script>
-
-    // ===== ULOŽENÍ SCROLLU A FILTRU =====
-    document.querySelectorAll("form").forEach(form => {
-        form.addEventListener("submit", function () {
-
-            // uloží scroll pozici
-            localStorage.setItem("scrollPosition", window.scrollY);
-
-            // uloží hodnotu filtru q
-            const searchInput = document.querySelector("input[name='q']");
-            if (searchInput) {
-                localStorage.setItem("searchValue", searchInput.value);
-            }
-
-        });
-    });
-
-    // ===== OBNOVENÍ PO NAČTENÍ STRÁNKY =====
-    window.addEventListener("load", function () {
-
-        // obnov filtr
-        const savedSearch = localStorage.getItem("searchValue");
-        if (savedSearch) {
-            const searchInput = document.querySelector("input[name='q']");
-            if (searchInput && !searchInput.value) {
-                searchInput.value = savedSearch;
-            }
-        }
-
-        // obnov scroll
-        const savedScroll = localStorage.getItem("scrollPosition");
-        if (savedScroll) {
-            window.scrollTo(0, parseInt(savedScroll));
-        }
-
-    });
-
-    </script>
-    """
-
-    html += "</body></html>"
-
-    return HTMLResponse(html)
-
+    )
 
 # ================= LOW =================
 @app.get("/low", response_class=HTMLResponse)
