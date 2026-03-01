@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+        <div class="logo">
+            STOCK SYSTEM
+        </div>
+
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/all_new">Sklad</a>
+            <a href="/low">Nízký stav</a>
+            <a href="/history">Historie</a>
+            <a href="/cars">Auta</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="/logout">Odhlásit</a>
+        </div>
+    </aside>
+
+    <div class="main">
+
+        <header class="topbar">
+            <div>
+                Uživatel: <strong>{{ user }}</strong>
+            </div>
+            <div>
+                Režim: <strong>{{ mode }}</strong>
+            </div>
+        </header>
+
+        <section class="content">
+            {% block content %}{% endblock %}
+        </section>
+
+    </div>
+
+</div>
+
+</body>
+</html>
