@@ -1180,68 +1180,63 @@ def all_products(request: Request,
     </div>
     """
 
-# ===== TABULKY =====
-for man in sorted(grouped):
+    # ===== TABULKY =====
+    for man in sorted(grouped):
 
-    html += f"<h3>🏭 {man}</h3>"
-    html += "<table>"
-    html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
+        html += f"<h3>🏭 {man}</h3>"
+        html += "<table>"
+        html += "<tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>"
 
-    for code, name, manufacturer, qty, minl in grouped[man]:
+        for code, name, manufacturer, qty, minl in grouped[man]:
 
-        html += f"""
-        <tr>
-            <td>{code}</td>
-            <td>{name}</td>
-        """
-
-        # ===== MNOŽSTVÍ =====
-        if mode == "sklad":
             html += f"""
-            <td>
-                <form method="post" action="/set_quantity" style="display:inline">
+            <tr>
+                <td>{code}</td>
+                <td>{name}</td>
+            """
+
+            if mode == "sklad":
+                html += f"""
+                <td>
+                    <form method="post" action="/set_quantity" style="display:inline">
+                        <input type="hidden" name="code" value="{code}">
+                        <input type="number" name="quantity" value="{qty}"
+                            style="width:70px;background:#1c2330;color:#fff;border:1px solid #333;border-radius:6px;padding:3px">
+                        <button style="background:#205080">OK</button>
+                    </form>
+                </td>
+                """
+            else:
+                html += f"<td>{qty}</td>"
+
+            html += "<td>"
+
+            if mode == "sklad":
+                html += f"""
+                <form method="post" action="/change" style="display:inline">
                     <input type="hidden" name="code" value="{code}">
-                    <input type="number" name="quantity" value="{qty}"
-                        style="width:70px;background:#1c2330;color:#fff;border:1px solid #333;border-radius:6px;padding:3px">
-                    <button style="background:#205080">OK</button>
+                    <button name="type" value="add">+</button>
+                    <button name="type" value="sub">-</button>
                 </form>
-            </td>
-            """
-        else:
-            html += f"<td>{qty}</td>"
 
-        html += "<td>"
+                <form method="post" action="/delete_by_code" style="display:inline"
+                    onsubmit="return confirm('Opravdu smazat produkt?');">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#802020">Smazat</button>
+                </form>
+                """
+            else:
+                html += f"""
+                <form method="post" action="/to_car" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#205080">Auto</button>
+                </form>
+                """
 
-        # ===== SKLAD =====
-        if mode == "sklad":
+            html += "</td></tr>"
 
-            html += f"""
-            <form method="post" action="/change" style="display:inline">
-                <input type="hidden" name="code" value="{code}">
-                <button name="type" value="add">+</button>
-                <button name="type" value="sub">-</button>
-            </form>
+        html += "</table>"
 
-            <form method="post" action="/delete_by_code" style="display:inline"
-                onsubmit="return confirm('Opravdu smazat produkt?');">
-                <input type="hidden" name="code" value="{code}">
-                <button style="background:#802020">Smazat</button>
-            </form>
-            """
-
-        # ===== ŘIDIČ =====
-        elif mode == "driver":
-
-            html += f"""
-            <form method="post" action="/to_car" style="display:inline">
-                <input type="hidden" name="code" value="{code}">
-                <button style="background:#205080">Auto</button>
-            </form>
-            """
-
-        html += "</td></tr>"
-
-    html += "</table>"    # ===== SCRIPT =====
     html += """
     <script>
     function togglePopup(id){
@@ -1257,9 +1252,7 @@ for man in sorted(grouped):
 
     html += "</body></html>"
 
-    return HTMLResponse(html)
-
-# ================= LOW =================
+    # ================= LOW =================
 @app.get("/low", response_class=HTMLResponse)
 def low(auth: str = Cookie(default=None)):
     if auth != "ok":
