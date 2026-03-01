@@ -1224,6 +1224,11 @@ def all_products(request: Request,
                     <input type="hidden" name="code" value="{code}">
                     <button style="background:#802020">Smazat</button>
                 </form>
+
+                <form method="post" action="/choose_car" style="display:inline">
+                    <input type="hidden" name="code" value="{code}">
+                    <button style="background:#205080">Auto</button>
+                </form>
                 """
             else:
                 html += f"""
