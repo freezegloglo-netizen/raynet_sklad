@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Sklad</h2>
+
+<div class="manufacturer-grid">
+
+    {% for manufacturer, items in grouped.items() %}
+    <div class="card">
+
+        <h3>{{ manufacturer }}</h3>
+
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th>Kód</th>
+                    <th>Název</th>
+                    <th>Množství</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.code }}</td>
+                    <td>{{ item.name }}</td>
+                    <td>
+                        {% if item.quantity <= item.min_limit %}
+                            <span class="badge-danger">{{ item.quantity }}</span>
+                        {% else %}
+                            {{ item.quantity }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+    {% endfor %}
+
+</div>
+
+{% endblock %}
