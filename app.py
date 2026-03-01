@@ -916,7 +916,7 @@ def use_from_car(code: str = Form(...), user: str = Cookie(default=None)):
 @app.post("/to_car")
 def to_car(code: str = Form(...),
            user: str = Form(None),
-           cookie_user: str = Cookie(default=None),
+           user_cookie: str = Cookie(default=None, alias="user"),
            auth: str = Cookie(default=None)):
 
     if auth != "ok":
@@ -929,7 +929,7 @@ def to_car(code: str = Form(...),
     if user:
         final_user = urllib.parse.unquote(user)
     elif cookie_user:
-        final_user = urllib.parse.unquote(cookie_user)
+        final_user = urllib.parse.unquote(user_cookie)
 
     if not final_user:
         return RedirectResponse("/all", status_code=303)
