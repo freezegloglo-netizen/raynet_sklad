@@ -956,7 +956,7 @@ def to_car(code: str = Form(...),
             VALUES(%s,%s,1)
             ON CONFLICT (user_name, code)
             DO UPDATE SET quantity = car_stock.quantity + 1
-        """, (user, code))
+        """, (final_user, code))
 
         conn.commit()
 
@@ -1226,7 +1226,7 @@ def low(auth: str = Cookie(default=None)):
 
 # ================= HISTORY =================
 @app.get("/history", response_class=HTMLResponse)
-def history(auth: str = Cookie(default=None)):
+def history(request: Request, auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
@@ -1238,9 +1238,14 @@ def history(auth: str = Cookie(default=None)):
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT code, change, created_at, COALESCE(user_name, 'Unknown')
-            FROM movements
-            ORDER BY created_at DESC
+            SELECT m.code,
+                   p.name,
+                   m.change,
+                   m.created_at,
+                   COALESCE(m.user_name, 'Unknown')
+            FROM movements m
+            LEFT JOIN products p ON p.code = m.code
+            ORDER BY m.created_at DESC
             LIMIT 200
         """)
         rows = cur.fetchall()
@@ -1252,13 +1257,68 @@ def history(auth: str = Cookie(default=None)):
     finally:
         safe_close(conn, cur)
 
-    html="<html><body style='background:#111;color:#eee;font-family:Arial'>"
-    html+="<h2>Historie</h2><a href='/'>Zpět</a><table border=1 width=100%>"
-    html+="<tr><th>Kód</th><th>Změna</th><th>Datum</th><th>Uživatel</th></tr>"
+    html = """
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <style>
+    body{background:#0f1115;color:#eee;font-family:Inter;margin:0;padding:20px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #222}
+    th{background:#151922;text-align:left}
+    button{background:#2b3445;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer}
+    button:hover{background:#3b4760}
+    .topbar{
+        position:sticky;
+        top:0;
+        background:#0f1115;
+        padding:6px 12px;
+        border-bottom:1px solid #222;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        font-size:13px;
+    }
+    </style>
+    </head>
+    <body>
+    """
 
-    for r in rows:
-        col="lime" if r[1]>0 else "red"
-        html+=f"<tr><td>{r[0]}</td><td style='color:{col}'>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
+    # horní lišta
+    user = request.cookies.get("user", "Neznámý")
+    mode = request.cookies.get("mode", "driver")
+    mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
 
-    html+="</table></body></html>"
+    html += f"""
+    <div class="topbar">
+        <div>
+            👤 <b>{user}</b> | Režim: <b>{mode_label}</b>
+        </div>
+        <div>
+            <a href="/"><button>Zpět</button></a>
+        </div>
+    </div>
+    """
+
+    html += "<h2 style='margin-top:20px'>📜 Posledních 200 pohybů</h2>"
+    html += "<table>"
+    html += "<tr><th>Kód</th><th>Název</th><th>Změna</th><th>Datum</th><th>Uživatel</th></tr>"
+
+    for code, name, change, date, user_name in rows:
+
+        col = "lime" if change > 0 else "red"
+        name = name or "-"
+
+        html += f"""
+        <tr>
+            <td>{code}</td>
+            <td>{name}</td>
+            <td style='color:{col};font-weight:bold'>{change}</td>
+            <td>{date}</td>
+            <td>{user_name}</td>
+        </tr>
+        """
+
+    html += "</table></body></html>"
+
     return HTMLResponse(html)
