@@ -455,10 +455,11 @@ def car(request: Request, auth: str = Cookie(default=None), user: str = Cookie(d
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT code, quantity
-        FROM car_stock
-        WHERE user_name=%s
-        ORDER BY code
+        SELECT c.code, p.name, c.quantity
+        FROM car_stock c
+        JOIN products p ON p.code = c.code
+        WHERE c.user_name=%s
+        ORDER BY c.code
     """, (user,))
     rows = cur.fetchall()
 
@@ -491,16 +492,17 @@ def car(request: Request, auth: str = Cookie(default=None), user: str = Cookie(d
     <h2>Auto — {user}</h2>
 
     <table>
-    <tr><th>Kód</th><th>Množství</th><th>Akce</th></tr>
+    <tr><th>Kód</th><th>Název</th><th>Množství</th><th>Akce</th></tr>
     """
 
     if not rows:
         html += "<tr><td colspan=3 style='color:#777'>Prázdné auto</td></tr>"
     else:
-        for code, qty in rows:
+        for code, name, qty in rows:
             html += f"""
             <tr>
                 <td>{code}</td>
+                <td>{name}</td>
                 <td>{qty}</td>
                 <td>
                     <form method="post" action="/use_from_car" style="display:inline">
@@ -594,13 +596,14 @@ def cars(request: Request, auth: str = Cookie(default=None)):
 
         html += f"<div class='card'><h3>{label}</h3>"
         html += "<table>"
-        html += "<tr><th>Kód</th><th>Množství</th></tr>"
+        html += "<tr><th>Kód</th><th>Název</th><th>Množství</th></tr>"
 
         cur.execute("""
-            SELECT code, quantity
-            FROM car_stock
-            WHERE user_name=%s
-            ORDER BY code
+            SELECT c.code, p.name, c.quantity
+            FROM car_stock c
+            JOIN products p ON p.code = c.code
+            WHERE c.user_name=%s
+            ORDER BY c.code
         """, (key,))
 
 
@@ -609,8 +612,8 @@ def cars(request: Request, auth: str = Cookie(default=None)):
         if not rows:
             html += "<tr><td colspan=2 style='color:#777'>Prázdné auto</td></tr>"
         else:
-            for code, qty in rows:
-                html += f"<tr><td>{code}</td><td>{qty}</td></tr>"
+            for code, name, qty in rows:
+                html += f"<tr><td>{code}</td><td>{name}</td><td>{qty}</td></tr>"
 
         html += "</table></div>"
 
@@ -911,18 +914,25 @@ def use_from_car(code: str = Form(...), user: str = Cookie(default=None)):
     return RedirectResponse("/car", status_code=303)
 
 @app.post("/to_car")
-def to_car(code: str = Form(...), user: str = Form(None), cookie_user: str = Cookie(default=None)):
+def to_car(code: str = Form(...),
+           user: str = Form(None),
+           cookie_user: str = Cookie(default=None),
+           auth: str = Cookie(default=None)):
+
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
     import urllib.parse
 
-    # pokud přišel user z popupu → použij ho
+    final_user = None
+
     if user:
-        user = urllib.parse.unquote(user)
-    else:
-        user = urllib.parse.unquote(cookie_user) if cookie_user else None
+        final_user = urllib.parse.unquote(user)
+    elif cookie_user:
+        final_user = urllib.parse.unquote(cookie_user)
 
-    if not user:
+    if not final_user:
         return RedirectResponse("/all", status_code=303)
-
     conn = None
     cur = None
 
