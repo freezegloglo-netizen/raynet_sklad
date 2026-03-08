@@ -1,3 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<h1>Dashboard</h1>
+
+<div class="stats">
+
+<div class="stat-card">
+<div class="stat-title">Produkty</div>
+<div class="stat-value">{{ total_products }}</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Nízký stav</div>
+<div class="stat-value">{{ low_products }}</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Pohyby dnes</div>
+<div class="stat-value">{{ today_moves }}</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Výrobci</div>
+<div class="stat-value">{{ manufacturers }}</div>
+</div>
+
+</div>
+
+
+<div class="card">
+
+<h3>Produkty podle výrobce</h3>
+
+<canvas id="bar"></canvas>
+
+</div>
+
+
+<div class="card">
+
+<h3>Historie podle výrobce</h3>
+
+<select id="man"></select>
+
+<canvas id="line"></canvas>
+
+</div>
+
+
 <script>
 
 const labels = {{ labels | safe }};
@@ -30,18 +83,18 @@ maintainAspectRatio:false
 }
 
 
-/* LOAD MANUFACTURERS */
+/* NAČTENÍ VÝROBCŮ */
 
 async function loadMan(){
 
 const r = await fetch('/api/manufacturers');
 const data = await r.json();
 
-let s = document.getElementById('man');
+const s = document.getElementById('man');
 
 data.forEach(m=>{
 
-let o=document.createElement('option');
+const o=document.createElement('option');
 o.value=m;
 o.textContent=m;
 
@@ -99,7 +152,7 @@ maintainAspectRatio:false
 }
 
 
-/* CHANGE MANUFACTURER */
+/* ZMĚNA VÝROBCE */
 
 document.getElementById("man").addEventListener("change", e=>{
 loadGraph(e.target.value);
@@ -111,3 +164,5 @@ loadMan();
 });
 
 </script>
+
+{% endblock %}
