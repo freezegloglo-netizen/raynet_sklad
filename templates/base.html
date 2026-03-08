@@ -12,54 +12,62 @@
 
 <div class="app">
 
-    <aside id="sidebar" class="sidebar">
+<!-- SIDEBAR -->
+<aside id="sidebar" class="sidebar">
 
-        <div class="logo">
-            <button class="menu-btn" onclick="toggleMenu()">☰</button>
-            <span>STOCK SYSTEM</span>
-        </div>
+<nav class="sidebar-links">
 
-        <nav class="sidebar-links">
-            <a href="/">Dashboard</a>
-            <a href="/all">Sklad</a>
-            <a href="/low">Nízký stav</a>
-            <a href="/cars">Auta</a>
-            <a href="/history">Historie</a>
-        </nav>
+<a href="/">Dashboard</a>
+<a href="/all_new">Sklad</a>
+<a href="/low">Nízký stav</a>
+<a href="/cars">Auta</a>
+<a href="/history">Historie</a>
 
-    </aside>
+</nav>
 
-    <div id="overlay" class="overlay" onclick="toggleMenu()"></div>
+</aside>
 
-    <!-- MAIN -->
-    <div class="main">
-
-        <header class="topbar">
-
-            <div>
-                👤 <b>{{ user }}</b>
-            </div>
-
-            <div>
-                Režim: <b>{{ mode }}</b>
-            </div>
-
-            <div>
-                <a href="/logout">
-                    <button class="logout-btn">Odhlásit</button>
-                </a>
-            </div>
-
-        </header>
+<!-- OVERLAY -->
+<div id="overlay" class="overlay" onclick="toggleMenu()"></div>
 
 
-        <section class="content">
+<!-- MAIN -->
+<div class="main">
 
-            {% block content %}{% endblock %}
+<header class="topbar">
 
-        </section>
+<div class="left">
 
-    </div>
+<button class="menu-btn" onclick="toggleMenu()">☰</button>
+
+<span class="app-title">STOCK SYSTEM</span>
+
+</div>
+
+<div class="right">
+
+👤 <b>{{ user }}</b>
+
+<span class="mode">
+Režim: <b>{{ mode }}</b>
+</span>
+
+<a href="/logout">
+<button class="logout-btn">Odhlásit</button>
+</a>
+
+</div>
+
+</header>
+
+
+<section class="content">
+
+{% block content %}{% endblock %}
+
+</section>
+
+</div>
 
 </div>
 
@@ -68,14 +76,15 @@
 
 function toggleMenu(){
 
-    const sidebar = document.getElementById("sidebar")
-    const overlay = document.getElementById("overlay")
+const sidebar = document.getElementById("sidebar")
+const overlay = document.getElementById("overlay")
 
-    sidebar.classList.toggle("open")
-    overlay.classList.toggle("show")
+sidebar.classList.toggle("open")
+overlay.classList.toggle("show")
 
 }
 
 </script>
+
 </body>
 </html>
