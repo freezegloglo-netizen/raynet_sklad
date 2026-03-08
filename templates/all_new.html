@@ -30,6 +30,7 @@ onkeyup="searchProducts(this.value)"
 <th>Kód</th>
 <th>Název</th>
 <th>Množství</th>
+<th>Akce</th>
 </tr>
 </thead>
 
@@ -46,18 +47,32 @@ onkeyup="searchProducts(this.value)"
 <td>
 
 {% if p.quantity == 0 %}
-
 <span class="stock-zero">0</span>
 
 {% elif p.quantity <= p.min_limit %}
-
 <span class="stock-low">{{ p.quantity }}</span>
 
 {% else %}
-
 <span class="stock-ok">{{ p.quantity }}</span>
-
 {% endif %}
+
+</td>
+
+<td style="display:flex; gap:6px;">
+
+<form method="post" action="/change">
+<input type="hidden" name="code" value="{{ p.code }}">
+<input type="hidden" name="type" value="remove">
+<button class="btn btn-danger">−</button>
+</form>
+
+<form method="post" action="/change">
+<input type="hidden" name="code" value="{{ p.code }}">
+<input type="hidden" name="type" value="add">
+<button class="btn">+</button>
+</form>
+
+<button class="btn btn-car" onclick="openCar('{{ p.code }}')">🚗</button>
 
 </td>
 
@@ -76,6 +91,43 @@ onkeyup="searchProducts(this.value)"
 </div>
 
 
+<!-- POPUP -->
+
+<div class="popup" id="carPopup">
+
+<div class="popup-content">
+
+<h3>Přesun do auta</h3>
+
+<form method="post" action="/to_car">
+
+<input type="hidden" name="code" id="carCode">
+
+<label>Komu do auta</label>
+
+<select name="user">
+
+<option value="Lukas">Lukáš</option>
+<option value="Jirka">Jirka</option>
+<option value="Milan">Milan</option>
+
+</select>
+
+<label>Množství</label>
+
+<input type="number" name="qty" value="1" min="1">
+
+<button class="btn">Přesunout</button>
+
+<button type="button" class="btn btn-danger" onclick="closeCar()">Zrušit</button>
+
+</form>
+
+</div>
+
+</div>
+
+
 <script>
 
 function toggleManufacturer(name){
@@ -89,6 +141,7 @@ el.style.display="none"
 }
 
 }
+
 
 function searchProducts(text){
 
@@ -120,6 +173,21 @@ t.style.display="none"
 }
 
 })
+
+}
+
+
+function openCar(code){
+
+document.getElementById("carPopup").style.display="flex"
+document.getElementById("carCode").value=code
+
+}
+
+
+function closeCar(){
+
+document.getElementById("carPopup").style.display="none"
 
 }
 

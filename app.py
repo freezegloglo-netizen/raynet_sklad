@@ -965,6 +965,7 @@ def use_from_car(code: str = Form(...), user: str = Cookie(default=None)):
 
 @app.post("/to_car")
 def to_car(code: str = Form(...),
+           qty: int = Form(1),
            user: str = Form(None),
            user_cookie: str = Cookie(default=None, alias="user"),
            auth: str = Cookie(default=None)):
@@ -1009,7 +1010,7 @@ def to_car(code: str = Form(...),
                           
         cur.execute("""
             INSERT INTO car_stock(user_name, code, quantity)
-            VALUES(%s,%s,1)
+            VALUES(%s,%s,%s)
             ON CONFLICT (user_name, code)
             DO UPDATE SET quantity = car_stock.quantity + 1
         """, (final_user, code))
