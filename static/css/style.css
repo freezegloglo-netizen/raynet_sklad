@@ -326,3 +326,23 @@ canvas{
 width:100% !important;
 height:400px !important;
 }
+
+.chart-box{
+max-width:900px;
+height:350px;
+margin:auto;
+position:relative;
+}
+
+.chart-box canvas{
+width:100% !important;
+height:100% !important;
+}
+
+@media (max-width:768px){
+
+.chart-box{
+height:250px;
+}
+
+}

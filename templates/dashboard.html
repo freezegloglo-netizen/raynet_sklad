@@ -35,7 +35,9 @@
 
 <h3>Produkty podle výrobce</h3>
 
+<div class="chart-box">
 <canvas id="bar"></canvas>
+</div>
 
 </div>
 
@@ -46,7 +48,9 @@
 
 <select id="man"></select>
 
+<div class="chart-box">
 <canvas id="line"></canvas>
+</div>
 
 </div>
 
@@ -57,8 +61,6 @@ const labels = {{ labels | safe }};
 const values = {{ values | safe }};
 
 document.addEventListener("DOMContentLoaded", function(){
-
-/* BAR GRAF */
 
 const bar = document.getElementById("bar");
 
@@ -82,9 +84,6 @@ maintainAspectRatio:false
 
 }
 
-
-/* NAČTENÍ VÝROBCŮ */
-
 async function loadMan(){
 
 const r = await fetch('/api/manufacturers');
@@ -105,9 +104,6 @@ s.appendChild(o);
 if(data.length) loadGraph(data[0]);
 
 }
-
-
-/* LINE GRAF */
 
 async function loadGraph(m){
 
@@ -151,13 +147,9 @@ maintainAspectRatio:false
 
 }
 
-
-/* ZMĚNA VÝROBCE */
-
 document.getElementById("man").addEventListener("change", e=>{
 loadGraph(e.target.value);
 });
-
 
 loadMan();
 
