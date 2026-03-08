@@ -17,7 +17,7 @@
 
         <div class="logo">
             <button class="menu-btn" onclick="toggleMenu()">☰</button>
-            <span class="logo-text">STOCK SYSTEM</span>
+            <span>STOCK SYSTEM</span>
         </div>
 
         <nav class="sidebar-links">
@@ -27,10 +27,6 @@
             <a href="/low">Nízký stav</a>
             <a href="/cars">Auta</a>
             <a href="/history">Historie</a>
-
-            {% if mode == "ŘIDIČ" %}
-            <a href="/car">Moje auto</a>
-            {% endif %}
 
         </nav>
 
@@ -78,8 +74,8 @@ function toggleMenu(){
 
     sidebar.classList.toggle("open")
 
-    // přepočítání layoutu kvůli grafům
-    setTimeout(function(){
+    // oprava grafů
+    setTimeout(()=>{
         window.dispatchEvent(new Event("resize"))
     },300)
 

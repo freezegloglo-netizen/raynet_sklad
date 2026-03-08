@@ -21,21 +21,24 @@ color:#111827;
 /* SIDEBAR */
 
 .sidebar{
-    width:60px;
-    background:linear-gradient(180deg,#1e3a8a,#4338ca);
-    height:100vh;
     position:fixed;
-    left:0;
     top:0;
-    overflow:hidden;
-    transition:0.25s;
-    border-right:1px solid #1f2633;
-    z-index:1000;
+    left:-260px;
+    width:260px;
+    height:100vh;
+    background:linear-gradient(180deg,#1e3a8a,#4338ca);
+    transition:0.3s;
 }
 
 .sidebar.open{
-    width:220px;
+    left:0;
 }
+.sidebar.open{
+    left:0;
+}
+
+
+/* LOGO */
 
 .logo{
     display:flex;
@@ -45,41 +48,37 @@ color:#111827;
     font-weight:700;
     color:white;
 }
+
+
+/* HAMBURGER */
+
+.menu-btn{
+    font-size:22px;
+    cursor:pointer;
+    background:none;
+    border:none;
+    color:white;
+}
+
+
+/* LINKS */
+
 .sidebar-links{
-    opacity:0;
-    transition:0.2s;
-    pointer-events:none;
+    display:flex;
+    flex-direction:column;
+    margin-top:20px;
 }
 
-.sidebar.open .sidebar-links{
-    opacity:1;
-    pointer-events:auto;
+.sidebar-links a{
+    color:white;
+    text-decoration:none;
+    padding:12px 20px;
+    font-size:15px;
 }
 
-.sidebar nav a{
-display:block;
-padding:10px 12px;
-border-radius:8px;
-margin-bottom:6px;
-color:rgba(255,255,255,0.9);
-text-decoration:none;
-transition:0.2s;
-font-size:14px;
+.sidebar-links a:hover{
+    background:rgba(255,255,255,0.1);
 }
-
-.sidebar nav a:hover{
-background:rgba(255,255,255,0.15);
-}
-
-.sidebar nav a.active{
-background:rgba(255,255,255,0.25);
-font-weight:600;
-}
-
-.sidebar-footer{
-margin-top:auto;
-}
-
 
 /* MAIN */
 
