@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
+
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>{{ title }}</title>
 
 <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
@@ -12,7 +15,9 @@
 
 <div class="app">
 
+
 <!-- SIDEBAR -->
+
 <aside id="sidebar" class="sidebar">
 
 <nav class="sidebar-links">
@@ -27,16 +32,21 @@
 
 </aside>
 
+
 <!-- OVERLAY -->
+
 <div id="overlay" class="overlay" onclick="toggleMenu()"></div>
 
 
+
 <!-- MAIN -->
+
 <div class="main">
+
 
 <header class="topbar">
 
-<div class="left">
+<div class="topbar-left">
 
 <button class="menu-btn" onclick="toggleMenu()">☰</button>
 
@@ -44,11 +54,14 @@
 
 </div>
 
-<div class="right">
 
+<div class="topbar-right">
+
+<span>
 👤 <b>{{ user }}</b>
+</span>
 
-<span class="mode">
+<span>
 Režim: <b>{{ mode }}</b>
 </span>
 
@@ -61,15 +74,18 @@ Režim: <b>{{ mode }}</b>
 </header>
 
 
+
 <section class="content">
 
 {% block content %}{% endblock %}
 
 </section>
 
+
 </div>
 
 </div>
+
 
 
 <script>
@@ -82,9 +98,32 @@ const overlay = document.getElementById("overlay")
 sidebar.classList.toggle("open")
 overlay.classList.toggle("show")
 
+/* přepočítání grafů */
+
+setTimeout(function(){
+
+window.dispatchEvent(new Event("resize"))
+
+},300)
+
 }
 
+
+/* zavření sidebaru při kliknutí na odkaz */
+
+document.querySelectorAll(".sidebar-links a").forEach(link => {
+
+link.addEventListener("click", () => {
+
+document.getElementById("sidebar").classList.remove("open")
+document.getElementById("overlay").classList.remove("show")
+
+})
+
+})
+
 </script>
+
 
 </body>
 </html>
