@@ -1,3 +1,5 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 {% extends "base.html" %}
 
 {% block content %}
@@ -54,20 +56,30 @@
 const labels = {{ labels | safe }};
 const values = {{ values | safe }};
 
-new Chart(document.getElementById('bar'),{
-    type:'bar',
-    data:{
-        labels:labels,
-        datasets:[{
-            data:values,
-            backgroundColor:"#2563eb"
-        }]
-    },
-    options:{
-        responsive:true,
-        maintainAspectRatio:false
-    }
-});
+document.addEventListener("DOMContentLoaded", function(){
+
+const ctx = document.getElementById("bar")
+
+if(ctx){
+
+new Chart(ctx,{
+type:'bar',
+data:{
+labels:labels,
+datasets:[{
+data:values,
+backgroundColor:"#2563eb"
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false
+}
+})
+
+}
+
+})
 
 
 async function loadMan(){
@@ -128,10 +140,77 @@ maintainAspectRatio:false
 }
 });
 
-document.getElementById('man').onchange=e=>loadGraph(e.target.value);
+<script>
 
-loadMan();
+document.addEventListener("DOMContentLoaded", function(){
+
+async function loadMan(){
+
+const r = await fetch('/api/manufacturers')
+const data = await r.json()
+
+let s = document.getElementById('man')
+
+data.forEach(m => {
+
+let o = document.createElement('option')
+o.value = m
+o.textContent = m
+s.appendChild(o)
+
+})
+
+if(data.length) loadGraph(data[0])
+
+}
+
+async function loadGraph(m){
+
+const r = await fetch('/api/history/' + m)
+const j = await r.json()
+
+let labels=[]
+let datasets=[]
+
+Object.keys(j).forEach((k,i)=>{
+
+if(labels.length===0) labels=j[k].t
+
+datasets.push({
+label:k,
+data:j[k].v,
+fill:false,
+borderColor:"#2563eb",
+tension:0.2
+})
+
+})
+
+if(window.l) window.l.destroy()
+
+const ctx=document.getElementById("line")
+
+if(!ctx) return
+
+window.l=new Chart(ctx,{
+type:'line',
+data:{
+labels:labels,
+datasets:datasets
+},
+options:{
+responsive:true,
+maintainAspectRatio:false
+}
+})
+
+}
+
+document.getElementById('man').onchange = e => loadGraph(e.target.value)
+
+loadMan()
+
+})
 
 </script>
-
 {% endblock %}
