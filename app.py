@@ -369,108 +369,57 @@ def car(request: Request, auth: str = Cookie(default=None), user: str = Cookie(d
 
 @app.get("/cars", response_class=HTMLResponse)
 def cars(request: Request, auth: str = Cookie(default=None)):
+
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
     conn = get_conn()
     cur = conn.cursor()
 
-    html = """
-    <html>
-    <head>
-    <meta charset="utf-8">
-    <style>
-    body{background:#0f1115;color:#eee;font-family:Arial;margin:0;padding:20px}
-    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
-    .card{background:#151922;border-radius:14px;padding:15px}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #222;text-align:left}
-    h3{margin-top:0}
-    </style>
-    </head>
-    <body>
-    """
+    cars=[]
 
-    # ===== HLAVIČKA =====
-    user = request.cookies.get("user", "Neznámý")
-    mode = request.cookies.get("mode", "driver")
-    mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
-
-    html += f"""
-    <div style="
-    position:sticky;
-    top:0;
-    background:#0f1115;
-    padding:6px 12px;
-    border-bottom:1px solid #222;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    font-size:13px;
-    ">
- 
-    <div>
-    Uživatel: <b>{user}</b> | Režim: <b>{mode_label}</b>
-    </div>
-
-    <div>
-    <a href="/logout">
-    <button style="
-    background:#1f2937;
-    color:#fff;
-    border:none;
-    padding:6px 12px;
-    border-radius:8px;
-    font-size:12px;
-    cursor:pointer;
-    ">
-    Přepnout uživatele
-    </button>
-    </a>
-    </div>
-
-    </div>
-
-    <a href="/"><button>Zpět</button></a>
-    <h2>🚗 Všechna auta</h2>
-
-    <div class="grid">
-    """
-
-    for key, label in USERS:
-
-        html += f"<div class='card'><h3>{label}</h3>"
-        html += "<table>"
-        html += "<tr><th>Kód</th><th>Název</th><th>Množství</th></tr>"
+    for key,label in USERS:
 
         cur.execute("""
-            SELECT c.code, p.name, c.quantity
-            FROM car_stock c
-            JOIN products p ON p.code = c.code
-            WHERE c.user_name=%s
-            ORDER BY c.code
-        """, (key,))
+        SELECT c.code,p.name,c.quantity
+        FROM car_stock c
+        JOIN products p ON p.code=c.code
+        WHERE c.user_name=%s
+        ORDER BY c.code
+        """,(key,))
 
+        rows=cur.fetchall()
 
-        rows = cur.fetchall()
+        items=[]
 
-        if not rows:
-            html += "<tr><td colspan=2 style='color:#777'>Prázdné auto</td></tr>"
-        else:
-            for code, name, qty in rows:
-                html += f"<tr><td>{code}</td><td>{name}</td><td>{qty}</td></tr>"
+        for r in rows:
 
-        html += "</table></div>"
+            items.append({
+                "code":r[0],
+                "name":r[1],
+                "quantity":r[2]
+            })
 
-    html += """
-    </div>
-    </body>
-    </html>
-    """
+        cars.append({
+            "user":label,
+            "items":items
+        })
 
-    safe_close(conn, cur)
-    return HTMLResponse(html)
+    safe_close(conn,cur)
 
+    user=request.cookies.get("user","Neznámý")
+    mode=request.cookies.get("mode","driver")
+
+    return templates.TemplateResponse(
+        "cars_new.html",
+        {
+            "request":request,
+            "title":"Auta",
+            "user":user,
+            "mode":mode,
+            "cars":cars
+        }
+    )
 @app.get("/export/products")
 def export_products(auth: str = Cookie(default=None)):
 
