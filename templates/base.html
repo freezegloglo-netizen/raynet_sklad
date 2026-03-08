@@ -4,14 +4,15 @@
 <head>
 
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>{{ title }} | Stock System</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </head>
 
@@ -20,7 +21,7 @@
 
 <div class="app">
 
-<!-- ===== SIDEBAR ===== -->
+<!-- SIDEBAR -->
 
 <aside class="sidebar">
 
@@ -34,7 +35,7 @@
 📊 Dashboard
 </a>
 
-<a href="/all" class="{% if request.url.path.startswith('/all') %}active{% endif %}">
+<a href="/all_new" class="{% if request.url.path.startswith('/all') %}active{% endif %}">
 📦 Sklad
 </a>
 
@@ -42,12 +43,12 @@
 ⚠ Nízký stav
 </a>
 
-<a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">
-📜 Historie
-</a>
-
 <a href="/cars" class="{% if request.url.path == '/cars' %}active{% endif %}">
 🚗 Auta
+</a>
+
+<a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">
+📜 Historie
 </a>
 
 </nav>
@@ -62,11 +63,10 @@
 
 </aside>
 
-<!-- ===== MAIN ===== -->
+
+<!-- MAIN -->
 
 <div class="main">
-
-<!-- ===== TOPBAR ===== -->
 
 <header class="topbar">
 
@@ -80,7 +80,6 @@
 
 </header>
 
-<!-- ===== CONTENT ===== -->
 
 <section class="content">
 
