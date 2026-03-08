@@ -16,7 +16,7 @@
     <aside id="sidebar" class="sidebar">
 
         <div class="logo">
-            <span class="menu-btn" onclick="toggleMenu()">☰</span>
+            <button class="menu-btn" onclick="toggleMenu()">☰</button>
             <span class="logo-text">STOCK SYSTEM</span>
         </div>
 
@@ -74,13 +74,17 @@
 
 function toggleMenu(){
 
-    let sidebar = document.getElementById("sidebar")
+    const sidebar = document.getElementById("sidebar")
 
     sidebar.classList.toggle("open")
+
+    // přepočítání layoutu kvůli grafům
+    setTimeout(function(){
+        window.dispatchEvent(new Event("resize"))
+    },300)
 
 }
 
 </script>
-
 </body>
 </html>
