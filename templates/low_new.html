@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Nízký stav skladu</h1>
+
+<div class="manufacturer-grid">
+
+{% for manufacturer, products in grouped.items() %}
+
+<div class="card manufacturer-card" onclick="toggleManufacturer('{{ manufacturer }}')">
+
+<h3>{{ manufacturer }}</h3>
+<p>{{ products|length }} produktů</p>
+
+<form action="/export/low" method="get">
+<button class="btn-export">Export Excel</button>
+</form>
+
+</div>
+
+
+<div id="man-{{ manufacturer }}" class="card manufacturer-products" style="display:none">
+
+<table class="modern-table">
+
+<thead>
+<tr>
+<th>Kód</th>
+<th>Název</th>
+<th>Množství</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for p in products %}
+
+<tr>
+
+<td>{{ p.code }}</td>
+
+<td>{{ p.name }}</td>
+
+<td>
+<span class="stock-low">{{ p.quantity }}</span>
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+
+<script>
+
+function toggleManufacturer(name){
+
+let el = document.getElementById("man-"+name)
+
+if(el.style.display==="none"){
+el.style.display="block"
+}else{
+el.style.display="none"
+}
+
+}
+
+</script>
+
+{% endblock %}
