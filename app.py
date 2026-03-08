@@ -1250,6 +1250,30 @@ def all_new(request: Request, auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT code,name,manufacturer,quantity,min_limit
+        FROM products
+        ORDER BY manufacturer,name
+    """)
+
+    rows = cur.fetchall()
+    safe_close(conn, cur)
+
+    from collections import defaultdict
+    grouped = defaultdict(list)
+
+    for row in rows:
+        grouped[row[2] or "Neznámý"].append({
+            "code": row[0],
+            "name": row[1],
+            "manufacturer": row[2] or "Neznámý",
+            "quantity": row[3],
+            "min_limit": row[4]
+        })
+
     user = request.cookies.get("user", "Neznámý")
     mode = request.cookies.get("mode", "driver")
 
@@ -1259,6 +1283,7 @@ def all_new(request: Request, auth: str = Cookie(default=None)):
             "request": request,
             "title": "Sklad",
             "user": user,
-            "mode": mode
+            "mode": mode,
+            "grouped": grouped
         }
     )
