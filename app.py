@@ -1012,101 +1012,54 @@ def low(request: Request, auth: str = Cookie(default=None)):
 # ================= HISTORY =================
 @app.get("/history", response_class=HTMLResponse)
 def history(request: Request, auth: str = Cookie(default=None)):
+
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn = None
-    cur = None
+    conn = get_conn()
+    cur = conn.cursor()
 
-    try:
-        conn = get_conn()
-        cur = conn.cursor()
+    cur.execute("""
+        SELECT m.code,
+               p.name,
+               m.change,
+               m.created_at,
+               COALESCE(m.user_name,'Unknown')
+        FROM movements m
+        LEFT JOIN products p ON p.code = m.code
+        ORDER BY m.created_at DESC
+        LIMIT 200
+    """)
 
-        cur.execute("""
-            SELECT m.code,
-                   p.name,
-                   m.change,
-                   m.created_at,
-                   COALESCE(m.user_name, 'Unknown')
-            FROM movements m
-            LEFT JOIN products p ON p.code = m.code
-            ORDER BY m.created_at DESC
-            LIMIT 200
-        """)
-        rows = cur.fetchall()
+    data = cur.fetchall()
 
-    except Exception as e:
-        print("HISTORY ERROR:", e)
-        return HTMLResponse(f"<h1>DB ERROR</h1><pre>{e}</pre>", status_code=500)
+    safe_close(conn, cur)
 
-    finally:
-        safe_close(conn, cur)
+    rows=[]
 
-    html = """
-    <html>
-    <head>
-    <meta charset="utf-8">
-    <style>
-    body{background:#0f1115;color:#eee;font-family:Inter;margin:0;padding:20px}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px;border-bottom:1px solid #222}
-    th{background:#151922;text-align:left}
-    button{background:#2b3445;color:#fff;border:none;padding:6px 12px;border-radius:8px;cursor:pointer}
-    button:hover{background:#3b4760}
-    .topbar{
-        position:sticky;
-        top:0;
-        background:#0f1115;
-        padding:6px 12px;
-        border-bottom:1px solid #222;
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        font-size:13px;
-    }
-    </style>
-    </head>
-    <body>
-    """
+    for r in data:
 
-    # horní lišta
+        rows.append({
+            "code": r[0],
+            "name": r[1] or "-",
+            "change": r[2],
+            "date": r[3],
+            "user": r[4]
+        })
+
     user = request.cookies.get("user", "Neznámý")
     mode = request.cookies.get("mode", "driver")
-    mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
 
-    html += f"""
-    <div class="topbar">
-        <div>
-            👤 <b>{user}</b> | Režim: <b>{mode_label}</b>
-        </div>
-        <div>
-            <a href="/"><button>Zpět</button></a>
-        </div>
-    </div>
-    """
-
-    html += "<h2 style='margin-top:20px'>📜 Posledních 200 pohybů</h2>"
-    html += "<table>"
-    html += "<tr><th>Kód</th><th>Název</th><th>Změna</th><th>Datum</th><th>Uživatel</th></tr>"
-
-    for code, name, change, date, user_name in rows:
-
-        col = "lime" if change > 0 else "red"
-        name = name or "-"
-
-        html += f"""
-        <tr>
-            <td>{code}</td>
-            <td>{name}</td>
-            <td style='color:{col};font-weight:bold'>{change}</td>
-            <td>{date}</td>
-            <td>{user_name}</td>
-        </tr>
-        """
-
-    html += "</table></body></html>"
-
-    return HTMLResponse(html)
+    return templates.TemplateResponse(
+        "history_new.html",
+        {
+            "request": request,
+            "title": "Historie",
+            "user": user,
+            "mode": mode,
+            "rows": rows
+        }
+    )
 
 @app.get("/all_new", response_class=HTMLResponse)
 def all_new(request: Request, auth: str = Cookie(default=None)):

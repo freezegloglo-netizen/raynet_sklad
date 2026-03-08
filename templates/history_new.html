@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Historie pohybů</h1>
+
+<input 
+class="search"
+placeholder="🔍 Hledat kód nebo název..."
+onkeyup="searchHistory(this.value)"
+>
+
+<div class="card">
+
+<table class="modern-table">
+
+<thead>
+<tr>
+<th>Kód</th>
+<th>Název</th>
+<th>Změna</th>
+<th>Datum</th>
+<th>Uživatel</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for row in rows %}
+
+<tr>
+
+<td>{{ row.code }}</td>
+
+<td>{{ row.name }}</td>
+
+<td>
+
+{% if row.change > 0 %}
+
+<span class="stock-ok">+{{ row.change }}</span>
+
+{% else %}
+
+<span class="stock-zero">{{ row.change }}</span>
+
+{% endif %}
+
+</td>
+
+<td>{{ row.date }}</td>
+
+<td>{{ row.user }}</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+
+<script>
+
+function searchHistory(text){
+
+text=text.toLowerCase()
+
+let rows=document.querySelectorAll("tbody tr")
+
+rows.forEach(r=>{
+
+if(r.innerText.toLowerCase().includes(text)){
+r.style.display=""
+}else{
+r.style.display="none"
+}
+
+})
+
+}
+
+</script>
+
+{% endblock %}
