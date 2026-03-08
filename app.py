@@ -402,7 +402,7 @@ def cars(request: Request, auth: str = Cookie(default=None)):
 
         cars.append({
             "user":label,
-            "items":items
+            "products": items
         })
 
     safe_close(conn,cur)
@@ -550,33 +550,6 @@ def add(
     conn.commit()
     safe_close(conn, cur)
     return RedirectResponse("/all_new", status_code=303)
-
-@app.post("/use_from_car")
-def use_from_car(code: str = Form(...),
-                 user: str = Cookie(default=None),
-                 auth: str = Cookie(default=None)):
-
-    if auth != "ok":
-        return RedirectResponse("/login", status_code=303)
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        UPDATE car_stock
-        SET quantity = quantity - 1
-        WHERE user_name=%s AND code=%s AND quantity > 0
-    """, (user, code))
-
-    cur.execute("""
-        DELETE FROM car_stock
-        WHERE user_name=%s AND code=%s AND quantity <= 0
-    """, (user, code))
-
-    conn.commit()
-    safe_close(conn, cur)
-
-    return RedirectResponse("/car", status_code=303)
 
 @app.post("/change")
 def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(default=None)):
@@ -803,7 +776,7 @@ def to_car(code: str = Form(...),
             VALUES(%s,%s,%s)
             ON CONFLICT (user_name, code)
             DO UPDATE SET quantity = car_stock.quantity + %s
-        """, (final_user, code))
+        """, (final_user, code, qty, qty))
 
         conn.commit()
 
@@ -900,7 +873,7 @@ def all_products(
     mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
 
     return templates.TemplateResponse(
-        "all.html",
+        "all_new.html"
         {
             "request": request,
             "title": "Sklad",
