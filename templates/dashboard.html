@@ -1,56 +1,3 @@
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-{% extends "base.html" %}
-
-{% block content %}
-
-<h1>Dashboard</h1>
-
-<div class="stats">
-
-<div class="stat-card">
-<div class="stat-title">Produkty</div>
-<div class="stat-value">{{ total_products }}</div>
-</div>
-
-<div class="stat-card">
-<div class="stat-title">Nízký stav</div>
-<div class="stat-value">{{ low_products }}</div>
-</div>
-
-<div class="stat-card">
-<div class="stat-title">Pohyby dnes</div>
-<div class="stat-value">{{ today_moves }}</div>
-</div>
-
-<div class="stat-card">
-<div class="stat-title">Výrobci</div>
-<div class="stat-value">{{ manufacturers }}</div>
-</div>
-
-</div>
-
-
-<div class="card">
-
-<h3>Produkty podle výrobce</h3>
-
-<canvas id="bar"></canvas>
-
-</div>
-
-
-<div class="card">
-
-<h3>Historie podle výrobce</h3>
-
-<select id="man"></select>
-
-<canvas id="line"></canvas>
-
-</div>
-
-
 <script>
 
 const labels = {{ labels | safe }};
@@ -58,15 +5,18 @@ const values = {{ values | safe }};
 
 document.addEventListener("DOMContentLoaded", function(){
 
-const ctx = document.getElementById("bar")
+/* BAR GRAF */
 
-if(ctx){
+const bar = document.getElementById("bar");
 
-new Chart(ctx,{
+if(bar){
+
+new Chart(bar,{
 type:'bar',
 data:{
 labels:labels,
 datasets:[{
+label:"Produkty",
 data:values,
 backgroundColor:"#2563eb"
 }]
@@ -75,12 +25,12 @@ options:{
 responsive:true,
 maintainAspectRatio:false
 }
-})
+});
 
 }
 
-})
 
+/* LOAD MANUFACTURERS */
 
 async function loadMan(){
 
@@ -104,6 +54,8 @@ if(data.length) loadGraph(data[0]);
 }
 
 
+/* LINE GRAF */
+
 async function loadGraph(m){
 
 const r = await fetch('/api/history/'+m);
@@ -112,69 +64,9 @@ const j = await r.json();
 let labels=[];
 let datasets=[];
 
-Object.keys(j).forEach((k,i)=>{
+Object.keys(j).forEach((k)=>{
 
-if(labels.length==0) labels=j[k].t;
-
-datasets.push({
-
-label:k,
-data:j[k].v,
-fill:false
-
-});
-
-});
-
-if(window.l) window.l.destroy();
-
-window.l=new Chart(document.getElementById('line'),{
-type:'line',
-data:{
-labels:labels,
-datasets:datasets
-},
-options:{
-responsive:true,
-maintainAspectRatio:false
-}
-});
-
-<script>
-
-document.addEventListener("DOMContentLoaded", function(){
-
-async function loadMan(){
-
-const r = await fetch('/api/manufacturers')
-const data = await r.json()
-
-let s = document.getElementById('man')
-
-data.forEach(m => {
-
-let o = document.createElement('option')
-o.value = m
-o.textContent = m
-s.appendChild(o)
-
-})
-
-if(data.length) loadGraph(data[0])
-
-}
-
-async function loadGraph(m){
-
-const r = await fetch('/api/history/' + m)
-const j = await r.json()
-
-let labels=[]
-let datasets=[]
-
-Object.keys(j).forEach((k,i)=>{
-
-if(labels.length===0) labels=j[k].t
+if(labels.length===0) labels=j[k].t;
 
 datasets.push({
 label:k,
@@ -182,15 +74,15 @@ data:j[k].v,
 fill:false,
 borderColor:"#2563eb",
 tension:0.2
-})
+});
 
-})
+});
 
-if(window.l) window.l.destroy()
+if(window.l) window.l.destroy();
 
-const ctx=document.getElementById("line")
+const ctx=document.getElementById("line");
 
-if(!ctx) return
+if(!ctx) return;
 
 window.l=new Chart(ctx,{
 type:'line',
@@ -202,15 +94,20 @@ options:{
 responsive:true,
 maintainAspectRatio:false
 }
-})
+});
 
 }
 
-document.getElementById('man').onchange = e => loadGraph(e.target.value)
 
-loadMan()
+/* CHANGE MANUFACTURER */
 
-})
+document.getElementById("man").addEventListener("change", e=>{
+loadGraph(e.target.value);
+});
+
+
+loadMan();
+
+});
 
 </script>
-{% endblock %}
