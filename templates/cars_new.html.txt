@@ -25,7 +25,7 @@
 
 <tbody>
 
-{% for p in car.items %}
+{% for p in car.products %}
 
 <tr>
 
