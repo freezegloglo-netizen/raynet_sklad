@@ -10,7 +10,6 @@ padding:0;
 /* APP */
 
 .app{
-display:flex;
 min-height:100vh;
 background:#f1f5f9;
 font-family:Inter,Arial,sans-serif;
@@ -21,89 +20,92 @@ color:#111827;
 /* SIDEBAR */
 
 .sidebar{
-    position:fixed;
-    top:0;
-    left:-260px;
-    width:260px;
-    height:100vh;
-    background:linear-gradient(180deg,#1e3a8a,#4338ca);
-    transition:0.3s;
-    z-index:2000;
+position:fixed;
+top:0;
+left:-260px;
+width:260px;
+height:100vh;
+background:linear-gradient(180deg,#1e3a8a,#4338ca);
+transition:left 0.3s ease;
+z-index:2000;
+padding-top:15px;
 }
 
 .sidebar.open{
-    left:0;
+left:0;
 }
+
 
 /* OVERLAY */
 
 .overlay{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.5);
-    opacity:0;
-    pointer-events:none;
-    transition:0.3s;
-    z-index:1500;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.45);
+opacity:0;
+pointer-events:none;
+transition:0.3s;
+z-index:1500;
 }
 
 .overlay.show{
-    opacity:1;
-    pointer-events:auto;
+opacity:1;
+pointer-events:auto;
 }
+
 
 /* LOGO */
 
 .logo{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    padding:15px;
-    color:white;
-    font-weight:700;
+display:flex;
+align-items:center;
+gap:12px;
+padding:15px;
+color:white;
+font-weight:700;
 }
+
 
 /* HAMBURGER */
 
 .menu-btn{
-    font-size:22px;
-    background:none;
-    border:none;
-    color:white;
-    cursor:pointer;
+font-size:22px;
+background:none;
+border:none;
+color:white;
+cursor:pointer;
 }
 
-/* LINKS */
+
+/* SIDEBAR LINKS */
 
 .sidebar-links{
-    display:flex;
-    flex-direction:column;
-    margin-top:20px;
+display:flex;
+flex-direction:column;
+margin-top:20px;
 }
 
 .sidebar-links a{
-    color:white;
-    text-decoration:none;
-    padding:12px 20px;
+padding:12px 20px;
+color:white;
+text-decoration:none;
+font-weight:500;
 }
 
 .sidebar-links a:hover{
-    background:rgba(255,255,255,0.15);
+background:rgba(255,255,255,0.15);
 }
+
 
 /* MAIN */
 
 .main{
-    margin-left:60px;
-    transition:0.25s;
+min-height:100vh;
 }
 
-.sidebar.open ~ .main{
-    margin-left:220px;
-}
 
 /* TOPBAR */
 
@@ -113,6 +115,7 @@ padding:16px 24px;
 border-bottom:1px solid #e5e7eb;
 display:flex;
 justify-content:space-between;
+align-items:center;
 }
 
 
@@ -290,119 +293,18 @@ font-size:20px;
 font-weight:700;
 }
 
-/* SIDEBAR */
 
-.sidebar{
-    width:60px;
-    background:#0f1115;
-    height:100vh;
-    position:fixed;
-    left:0;
-    top:0;
-    overflow:hidden;
-    transition:0.25s;
-    border-right:1px solid #1f2633;
-}
-
-.sidebar.open{
-    width:220px;
-}
-
-
-/* LOGO */
-
-.logo{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    padding:15px;
-    font-weight:700;
-    color:#fff;
-}
-
-
-/* HAMBURGER */
-
-.menu-btn{
-    font-size:22px;
-    cursor:pointer;
-    background:none;
-    border:none;
-    color:white;
-}
-
-/* TEXT */
-
-.logo-text{
-    white-space:nowrap;
-    opacity:0;
-    transition:0.2s;
-}
-
-.sidebar.open .logo-text{
-    opacity:1;
-}
-
-
-/* NAV */
-
-.sidebar-links{
-    display:flex;
-    flex-direction:column;
-}
-
-.sidebar-links a{
-    padding:12px 18px;
-    text-decoration:none;
-    color:#9aa4b2;
-    font-weight:500;
-    transition:0.15s;
-}
-
-.sidebar-links a:hover{
-    background:#1c2330;
-    color:#fff;
-}
-
-
-/* MAIN */
-
-.main{
-    margin-left:60px;
-    transition:0.25s;
-}
-
-.sidebar.open ~ .main{
-    margin-left:220px;
-}
-
-
-/* TOPBAR */
-
-.topbar{
-    background:#0b0e13;
-    border-bottom:1px solid #1f2633;
-    padding:10px 20px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-
-/* CONTENT */
-
-.content{
-    padding:20px;
-}
-
-
-/* BUTTON */
+/* LOGOUT BUTTON */
 
 .logout-btn{
-    background:#1c2330;
-    border:none;
-    color:#fff;
-    padding:6px 12px;
-    border-radius:8px;
-    cursor:pointer;
+background:#2563eb;
+border:none;
+color:#fff;
+padding:6px 12px;
+border-radius:8px;
+cursor:pointer;
+}
+
+.logout-btn:hover{
+background:#1d4ed8;
 }
