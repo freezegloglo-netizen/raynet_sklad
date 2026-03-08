@@ -605,7 +605,6 @@ def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(defa
 @app.post("/set_quantity")
 def set_quantity(code: str = Form(...),
                  quantity: int = Form(...),
-                 mode: str = Cookie(default=None),
                  auth: str = Cookie(default=None)):
 
     if auth != "ok" or mode != "sklad":
@@ -873,7 +872,7 @@ def all_products(
     mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
 
     return templates.TemplateResponse(
-        "all_new.html"
+        "all_new.html",
         {
             "request": request,
             "title": "Sklad",
