@@ -55,17 +55,18 @@ const labels = {{ labels | safe }};
 const values = {{ values | safe }};
 
 new Chart(document.getElementById('bar'),{
-
-type:'bar',
-
-data:{
-labels:labels,
-datasets:[{
-label:'Produkty',
-data:values
-}]
-}
-
+    type:'bar',
+    data:{
+        labels:labels,
+        datasets:[{
+            data:values,
+            backgroundColor:"#2563eb"
+        }]
+    },
+    options:{
+        responsive:true,
+        maintainAspectRatio:false
+    }
 });
 
 
@@ -116,13 +117,16 @@ fill:false
 if(window.l) window.l.destroy();
 
 window.l=new Chart(document.getElementById('line'),{
-
 type:'line',
-data:{labels:labels,datasets:datasets}
-
-});
-
+data:{
+labels:labels,
+datasets:datasets
+},
+options:{
+responsive:true,
+maintainAspectRatio:false
 }
+});
 
 document.getElementById('man').onchange=e=>loadGraph(e.target.value);
 

@@ -321,3 +321,8 @@ cursor:pointer;
 .logout-btn:hover{
 background:#1d4ed8;
 }
+
+canvas{
+width:100% !important;
+height:400px !important;
+}
