@@ -214,23 +214,28 @@ def set_sklad():
 # ================= DASHBOARD =================
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, auth: str = Cookie(default=None)):
+
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn=None
-    cur=None
-    
+    conn = None
+    cur = None
+
     try:
         conn = get_conn()
         cur = conn.cursor()
 
-        # sloupcový graf
-        cur.execute("SELECT manufacturer, SUM(quantity) FROM products GROUP BY manufacturer ORDER BY manufacturer")
+        cur.execute("""
+        SELECT manufacturer, SUM(quantity)
+        FROM products
+        GROUP BY manufacturer
+        ORDER BY manufacturer
+        """)
         data = cur.fetchall()
+
         labels = [d[0] or "Neznámý" for d in data]
         values = [int(d[1]) for d in data]
 
-        # statistiky
         cur.execute("SELECT COUNT(*) FROM products")
         total_products = cur.fetchone()[0]
 
@@ -249,189 +254,25 @@ def home(request: Request, auth: str = Cookie(default=None)):
     finally:
         safe_close(conn, cur)
 
-    html = f"""
-    <html>
-    <head>
-    <meta charset="utf-8">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <style>
-    body{{background:#0f1115;color:#e6e6e6;font-family:Inter,Arial;margin:0}}
-
-    .topbar{{
-        position:sticky;
-        top:0;
-        background:#0b0e13;
-        padding:10px 16px;
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        border-bottom:1px solid #1f2633;
-        z-index:1000;
-    }}
-
-    .menu{{
-        display:flex;
-        gap:8px;
-        padding:10px 16px;
-        border-bottom:1px solid #1f2633;
-        background:#0f1115;
-    }}
-
-    .btn{{
-        background:#1c2330;
-        border:none;
-        color:#fff;
-        padding:7px 14px;
-        border-radius:8px;
-        cursor:pointer;
-        font-weight:600;
-        transition:0.15s;
-    }}
-
-    .btn:hover{{background:#2a3446}}
-
-    .content{{padding:18px}}
-
-    .cards{{display:flex;gap:10px;margin-bottom:15px}}
-
-    .card{{
-        background:#151a23;
-        padding:14px;
-        border-radius:12px;
-        min-width:120px;
-        text-align:center;
-        box-shadow:0 0 0 1px #1f2633;
-    }}
-
-    .title-small{{color:#9aa4b2;font-size:12px;margin-bottom:4px}}
-    .value-big{{font-size:20px;font-weight:700}}
-
-    </style>
-    </head>
-
-    <body>
-    """
-
-    # ===== HORNÍ BAR =====
     user = request.cookies.get("user", "Neznámý")
     mode = request.cookies.get("mode", "driver")
     mode_label = "SKLAD" if mode == "sklad" else "ŘIDIČ"
 
-    html += f"""
-    <div class="topbar">
-
-        <div>
-            👤 <b>{user}</b> &nbsp; | &nbsp; Režim: <b>{mode_label}</b>
-        </div>
-
-        <div>
-            <a href="/logout">
-                <button class="btn">Přepnout uživatele</button>
-            </a>
-        </div>
-
-    </div>
-    """
-
-     # ===== MENU =====
-    html += '<div class="menu">'
-    html += '<a href="/"><button class="btn">Dashboard</button></a>'
-    html += '<a href="/all"><button class="btn">Sklad-Kancl</button></a>'
-    html += '<a href="/low"><button class="btn">Nízký stav</button></a>'
-    html += '<a href="/export/products"><button class="btn">Excel Produkty</button></a>'
-    html += '<a href="/export/low"><button class="btn">Excel Nízký stav</button></a>'
-
-    if mode == "driver":
-        html += '<a href="/car"><button class="btn">Auto</button></a>'
-
-    html += '<a href="/history"><button class="btn">Historie</button></a>'
-    html += '<a href="/cars"><button class="btn">Všechna auta</button></a>'
-    html += '</div>'
-
-    html += '<div class="content">'
-
-    # ===== KARTY =====
-    html += f"""
-    <div class="cards">
-
-        <div class="card">
-            <div class="title-small">Produkty</div>
-            <div class="value-big">{total_products}</div>
-        </div>
-
-        <div class="card">
-            <div class="title-small">Nízký stav</div>
-            <div class="value-big">{low_products}</div>
-        </div>
-
-        <div class="card">
-            <div class="title-small">Dnes pohyby</div>
-            <div class="value-big">{today_moves}</div>
-        </div>
-
-        <div class="card">
-            <div class="title-small">Výrobci</div>
-            <div class="value-big">{manufacturers}</div>
-        </div>
-
-    </div>
-    """
-
-    html += """
-    <canvas id="bar"></canvas>
-
-    <h3>Historie podle výrobce</h3>
-    <select id="man"></select>
-    <canvas id="line"></canvas>
-
-    </div>
-
-    <script>
-    const labels=%s;
-    const values=%s;
-
-    new Chart(document.getElementById('bar'),{
-        type:'bar',
-        data:{labels:labels,datasets:[{data:values}]}
-    });
-
-    async function loadMan(){
-        const r=await fetch('/api/manufacturers');
-        const data=await r.json();
-        let s=document.getElementById('man');
-        data.forEach(m=>{
-            let o=document.createElement('option');
-            o.value=m;
-            o.textContent=m;
-            s.appendChild(o);
-        });
-        if(data.length)loadGraph(data[0]);
-    }
-
-    async function loadGraph(m){
-        const r=await fetch('/api/history/'+m);
-        const j=await r.json();
-        let labels=[],datasets=[];
-        Object.keys(j).forEach((k,i)=>{
-            if(labels.length==0)labels=j[k].t;
-            datasets.push({label:k,data:j[k].v,fill:false});
-        });
-        if(window.l)window.l.destroy();
-        window.l=new Chart(document.getElementById('line'),{type:'line',data:{labels:labels,datasets:datasets}});
-    }
-
-    document.getElementById('man').onchange=e=>loadGraph(e.target.value);
-    loadMan();
-    </script>
-
-    </body>
-    </html>
-    """ % (json.dumps(labels), json.dumps(values))        
-   
-    return HTMLResponse(html)
-
-
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "title": "Dashboard",
+            "user": user,
+            "mode": mode_label,
+            "total_products": total_products,
+            "low_products": low_products,
+            "today_moves": today_moves,
+            "manufacturers": manufacturers,
+            "labels": labels,
+            "values": values
+        }
+    )
 
 # ================= API =================
 @app.get("/api/manufacturers")
@@ -759,7 +600,7 @@ def add(
     """, (code,name,manufacturer,quantity,min_limit))
     conn.commit()
     safe_close(conn, cur)
-    return RedirectResponse("/all", status_code=303)
+    return RedirectResponse("/all_new", status_code=303)
 
 @app.post("/use_from_car")
 def use_from_car(code: str = Form(...),
@@ -805,7 +646,7 @@ def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(defa
         cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
         row = cur.fetchone()
         if not row:
-            return RedirectResponse("/all", status_code=303)
+            return RedirectResponse("/all_new", status_code=303)
 
         qty = row[0]
 
@@ -837,7 +678,7 @@ def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(defa
         if conn:
             db_pool.putconn(conn)
 
-    return RedirectResponse("/all", status_code=303)
+    return RedirectResponse("/all_new", status_code=303)
 
 @app.post("/set_quantity")
 def set_quantity(code: str = Form(...),
@@ -859,7 +700,7 @@ def set_quantity(code: str = Form(...),
         cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
         row = cur.fetchone()
         if not row:
-            return RedirectResponse("/all", status_code=303)
+            return RedirectResponse("/all_new", status_code=303)
 
         old_qty = row[0]
         difference = quantity - old_qty
@@ -883,7 +724,7 @@ def set_quantity(code: str = Form(...),
     finally:
         safe_close(conn, cur)
 
-    return RedirectResponse("/all", status_code=303)
+    return RedirectResponse("/all_new", status_code=303)
 
 @app.post("/delete_by_code")
 def delete_by_code(code: str = Form(...)):
@@ -892,7 +733,7 @@ def delete_by_code(code: str = Form(...)):
     cur.execute("DELETE FROM products WHERE code=%s", (code,))
     conn.commit()
     safe_close(conn, cur)
-    return RedirectResponse("/all", status_code=303)
+    return RedirectResponse("/all_new", status_code=303)
 
 @app.post("/choose_car")
 def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
@@ -983,7 +824,7 @@ def to_car(code: str = Form(...),
         final_user = urllib.parse.unquote(user_cookie)
 
     if not final_user:
-        return RedirectResponse("/all", status_code=303)
+        return RedirectResponse("/all_new", status_code=303)
     conn = None
     cur = None
 
@@ -1000,7 +841,7 @@ def to_car(code: str = Form(...),
 
         if cur.fetchone() is None:
             conn.commit()
-            return RedirectResponse("/all", status_code=303)
+            return RedirectResponse("/all_new", status_code=303)
                               
         # 🔹 ZÁPIS DO HISTORIE – přesun do auta
         cur.execute("""
@@ -1012,7 +853,7 @@ def to_car(code: str = Form(...),
             INSERT INTO car_stock(user_name, code, quantity)
             VALUES(%s,%s,%s)
             ON CONFLICT (user_name, code)
-            DO UPDATE SET quantity = car_stock.quantity + 1
+            DO UPDATE SET quantity = car_stock.quantity + %s
         """, (final_user, code))
 
         conn.commit()
@@ -1025,7 +866,7 @@ def to_car(code: str = Form(...),
     finally:
         safe_close(conn, cur)
 
-    return RedirectResponse("/all", status_code=303)
+    return RedirectResponse("/all_new", status_code=303)
 
 @app.post("/set_quantity")
 def set_quantity(code: str = Form(...),
@@ -1044,7 +885,7 @@ def set_quantity(code: str = Form(...),
 
     if not row:
         safe_close(conn, cur)
-        return RedirectResponse("/all", status_code=303)
+        return RedirectResponse("/all_new", status_code=303)
 
     old_qty = row[0]
     diff = quantity - old_qty
@@ -1059,7 +900,7 @@ def set_quantity(code: str = Form(...),
     conn.commit()
     safe_close(conn, cur)
 
-    return RedirectResponse("/all", status_code=303)
+    return RedirectResponse("/all_new", status_code=303)
 
 # ================= PRODUCTS =================
 @app.get("/all", response_class=HTMLResponse)

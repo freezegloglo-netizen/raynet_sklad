@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Dashboard</h1>
+
+<div class="stats">
+
+<div class="stat-card">
+<div class="stat-title">Produkty</div>
+<div class="stat-value">{{ total_products }}</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Nízký stav</div>
+<div class="stat-value">{{ low_products }}</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Pohyby dnes</div>
+<div class="stat-value">{{ today_moves }}</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-title">Výrobci</div>
+<div class="stat-value">{{ manufacturers }}</div>
+</div>
+
+</div>
+
+
+<div class="card">
+
+<h3>Produkty podle výrobce</h3>
+
+<canvas id="bar"></canvas>
+
+</div>
+
+
+<div class="card">
+
+<h3>Historie podle výrobce</h3>
+
+<select id="man"></select>
+
+<canvas id="line"></canvas>
+
+</div>
+
+
+<script>
+
+const labels = {{ labels | safe }};
+const values = {{ values | safe }};
+
+new Chart(document.getElementById('bar'),{
+
+type:'bar',
+
+data:{
+labels:labels,
+datasets:[{
+label:'Produkty',
+data:values
+}]
+}
+
+});
+
+
+async function loadMan(){
+
+const r = await fetch('/api/manufacturers');
+const data = await r.json();
+
+let s = document.getElementById('man');
+
+data.forEach(m=>{
+
+let o=document.createElement('option');
+o.value=m;
+o.textContent=m;
+
+s.appendChild(o);
+
+});
+
+if(data.length) loadGraph(data[0]);
+
+}
+
+
+async function loadGraph(m){
+
+const r = await fetch('/api/history/'+m);
+const j = await r.json();
+
+let labels=[];
+let datasets=[];
+
+Object.keys(j).forEach((k,i)=>{
+
+if(labels.length==0) labels=j[k].t;
+
+datasets.push({
+
+label:k,
+data:j[k].v,
+fill:false
+
+});
+
+});
+
+if(window.l) window.l.destroy();
+
+window.l=new Chart(document.getElementById('line'),{
+
+type:'line',
+data:{labels:labels,datasets:datasets}
+
+});
+
+}
+
+document.getElementById('man').onchange=e=>loadGraph(e.target.value);
+
+loadMan();
+
+</script>
+
+{% endblock %}
