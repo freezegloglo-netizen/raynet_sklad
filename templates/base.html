@@ -1,96 +1,86 @@
 <!DOCTYPE html>
 <html lang="cs">
-
 <head>
-
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>{{ title }} | Stock System</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<title>{{ title }}</title>
 
 <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 </head>
-
 
 <body>
 
 <div class="app">
 
-<!-- SIDEBAR -->
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
 
-<aside class="sidebar">
+        <div class="logo">
+            <span class="menu-btn" onclick="toggleMenu()">☰</span>
+            <span class="logo-text">STOCK SYSTEM</span>
+        </div>
 
-<div class="logo">
-📦 STOCK SYSTEM
-</div>
+        <nav class="sidebar-links">
 
-<nav>
+            <a href="/">Dashboard</a>
+            <a href="/all">Sklad</a>
+            <a href="/low">Nízký stav</a>
+            <a href="/cars">Auta</a>
+            <a href="/history">Historie</a>
 
-<a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
-📊 Dashboard
-</a>
+            {% if mode == "ŘIDIČ" %}
+            <a href="/car">Moje auto</a>
+            {% endif %}
 
-<a href="/all_new" class="{% if request.url.path.startswith('/all') %}active{% endif %}">
-📦 Sklad
-</a>
+        </nav>
 
-<a href="/low" class="{% if request.url.path == '/low' %}active{% endif %}">
-⚠ Nízký stav
-</a>
-
-<a href="/cars" class="{% if request.url.path == '/cars' %}active{% endif %}">
-🚗 Auta
-</a>
-
-<a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">
-📜 Historie
-</a>
-
-</nav>
-
-<div class="sidebar-footer">
-
-<a href="/logout">
-🚪 Odhlásit
-</a>
-
-</div>
-
-</aside>
+    </aside>
 
 
-<!-- MAIN -->
+    <!-- MAIN -->
+    <div class="main">
 
-<div class="main">
+        <header class="topbar">
 
-<header class="topbar">
+            <div>
+                👤 <b>{{ user }}</b>
+            </div>
 
-<div>
-👤 Uživatel: <strong>{{ user }}</strong>
-</div>
+            <div>
+                Režim: <b>{{ mode }}</b>
+            </div>
 
-<div>
-⚙ Režim: <strong>{{ mode }}</strong>
-</div>
+            <div>
+                <a href="/logout">
+                    <button class="logout-btn">Odhlásit</button>
+                </a>
+            </div>
 
-</header>
+        </header>
 
 
-<section class="content">
+        <section class="content">
 
-{% block content %}{% endblock %}
+            {% block content %}{% endblock %}
 
-</section>
+        </section>
+
+    </div>
 
 </div>
 
-</div>
+
+<script>
+
+function toggleMenu(){
+
+    let sidebar = document.getElementById("sidebar")
+
+    sidebar.classList.toggle("open")
+
+}
+
+</script>
 
 </body>
-
 </html>
