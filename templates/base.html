@@ -12,7 +12,6 @@
 
 <div class="app">
 
-    <!-- SIDEBAR -->
     <aside id="sidebar" class="sidebar">
 
         <div class="logo">
@@ -21,17 +20,16 @@
         </div>
 
         <nav class="sidebar-links">
-
             <a href="/">Dashboard</a>
             <a href="/all">Sklad</a>
             <a href="/low">Nízký stav</a>
             <a href="/cars">Auta</a>
             <a href="/history">Historie</a>
-
         </nav>
 
     </aside>
 
+    <div id="overlay" class="overlay" onclick="toggleMenu()"></div>
 
     <!-- MAIN -->
     <div class="main">
@@ -71,13 +69,10 @@
 function toggleMenu(){
 
     const sidebar = document.getElementById("sidebar")
+    const overlay = document.getElementById("overlay")
 
     sidebar.classList.toggle("open")
-
-    // oprava grafů
-    setTimeout(()=>{
-        window.dispatchEvent(new Event("resize"))
-    },300)
+    overlay.classList.toggle("show")
 
 }
 

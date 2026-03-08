@@ -28,15 +28,32 @@ color:#111827;
     height:100vh;
     background:linear-gradient(180deg,#1e3a8a,#4338ca);
     transition:0.3s;
+    z-index:2000;
 }
 
 .sidebar.open{
     left:0;
 }
-.sidebar.open{
+
+/* OVERLAY */
+
+.overlay{
+    position:fixed;
+    top:0;
     left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.5);
+    opacity:0;
+    pointer-events:none;
+    transition:0.3s;
+    z-index:1500;
 }
 
+.overlay.show{
+    opacity:1;
+    pointer-events:auto;
+}
 
 /* LOGO */
 
@@ -45,21 +62,19 @@ color:#111827;
     align-items:center;
     gap:12px;
     padding:15px;
-    font-weight:700;
     color:white;
+    font-weight:700;
 }
-
 
 /* HAMBURGER */
 
 .menu-btn{
     font-size:22px;
-    cursor:pointer;
     background:none;
     border:none;
     color:white;
+    cursor:pointer;
 }
-
 
 /* LINKS */
 
@@ -73,11 +88,10 @@ color:#111827;
     color:white;
     text-decoration:none;
     padding:12px 20px;
-    font-size:15px;
 }
 
 .sidebar-links a:hover{
-    background:rgba(255,255,255,0.1);
+    background:rgba(255,255,255,0.15);
 }
 
 /* MAIN */
