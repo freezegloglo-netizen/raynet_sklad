@@ -2,9 +2,127 @@
 
 {% block content %}
 
-<div class="card">
-    <h2>Sklad – Nový SaaS Layout</h2>
-    Pokud vidíš sidebar vlevo a tento box, architektura funguje.
+<h1>Sklad</h1>
+
+<input 
+class="search"
+placeholder="🔍 Hledat kód, název nebo výrobce..."
+onkeyup="searchProducts(this.value)"
+>
+
+<div class="manufacturer-grid">
+
+{% for manufacturer, products in grouped.items() %}
+
+<div class="card manufacturer-card" onclick="toggleManufacturer('{{ manufacturer }}')">
+
+<h3>{{ manufacturer }}</h3>
+<p>{{ products|length }} produktů</p>
+
 </div>
+
+<div id="man-{{ manufacturer }}" class="card manufacturer-products" style="display:none">
+
+<table class="modern-table">
+
+<thead>
+<tr>
+<th>Kód</th>
+<th>Název</th>
+<th>Množství</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for p in products %}
+
+<tr>
+
+<td>{{ p.code }}</td>
+
+<td>{{ p.name }}</td>
+
+<td>
+
+{% if p.quantity == 0 %}
+
+<span class="stock-zero">0</span>
+
+{% elif p.quantity <= p.min_limit %}
+
+<span class="stock-low">{{ p.quantity }}</span>
+
+{% else %}
+
+<span class="stock-ok">{{ p.quantity }}</span>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+
+<script>
+
+function toggleManufacturer(name){
+
+let el=document.getElementById("man-"+name)
+
+if(el.style.display==="none"){
+el.style.display="block"
+}else{
+el.style.display="none"
+}
+
+}
+
+function searchProducts(text){
+
+text=text.toLowerCase()
+
+let tables=document.querySelectorAll(".manufacturer-products")
+
+tables.forEach(t=>{
+
+let rows=t.querySelectorAll("tbody tr")
+
+let found=false
+
+rows.forEach(r=>{
+
+if(r.innerText.toLowerCase().includes(text)){
+r.style.display=""
+found=true
+}else{
+r.style.display="none"
+}
+
+})
+
+if(found){
+t.style.display="block"
+}else{
+t.style.display="none"
+}
+
+})
+
+}
+
+</script>
 
 {% endblock %}

@@ -1,50 +1,97 @@
 <!DOCTYPE html>
 <html lang="cs">
+
 <head>
-    <meta charset="UTF-8">
-    <title>{{ title }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+
+<meta charset="UTF-8">
+
+<title>{{ title }} | Stock System</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+
 </head>
+
+
 <body>
 
 <div class="app">
 
-    <aside class="sidebar">
-        <div class="logo">
-            STOCK SYSTEM
-        </div>
+<!-- ===== SIDEBAR ===== -->
 
-        <nav>
-            <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
-            <a href="/all" class="{% if request.url.path.startswith('/all') %}active{% endif %}">Sklad</a>
-            <a href="/low" class="{% if request.url.path == '/low' %}active{% endif %}">Nízký stav</a>
-            <a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">Historie</a>
-            <a href="/cars" class="{% if request.url.path == '/cars' %}active{% endif %}">Auta</a>
-        </nav>
+<aside class="sidebar">
 
-        <div class="sidebar-footer">
-            <a href="/logout">Odhlásit</a>
-        </div>
-    </aside>
+<div class="logo">
+📦 STOCK SYSTEM
+</div>
 
-    <div class="main">
+<nav>
 
-        <header class="topbar">
-            <div>
-                Uživatel: <strong>{{ user }}</strong>
-            </div>
-            <div>
-                Režim: <strong>{{ mode }}</strong>
-            </div>
-        </header>
+<a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+📊 Dashboard
+</a>
 
-        <section class="content">
-            {% block content %}{% endblock %}
-        </section>
+<a href="/all" class="{% if request.url.path.startswith('/all') %}active{% endif %}">
+📦 Sklad
+</a>
 
-    </div>
+<a href="/low" class="{% if request.url.path == '/low' %}active{% endif %}">
+⚠ Nízký stav
+</a>
+
+<a href="/history" class="{% if request.url.path == '/history' %}active{% endif %}">
+📜 Historie
+</a>
+
+<a href="/cars" class="{% if request.url.path == '/cars' %}active{% endif %}">
+🚗 Auta
+</a>
+
+</nav>
+
+<div class="sidebar-footer">
+
+<a href="/logout">
+🚪 Odhlásit
+</a>
+
+</div>
+
+</aside>
+
+<!-- ===== MAIN ===== -->
+
+<div class="main">
+
+<!-- ===== TOPBAR ===== -->
+
+<header class="topbar">
+
+<div>
+👤 Uživatel: <strong>{{ user }}</strong>
+</div>
+
+<div>
+⚙ Režim: <strong>{{ mode }}</strong>
+</div>
+
+</header>
+
+<!-- ===== CONTENT ===== -->
+
+<section class="content">
+
+{% block content %}{% endblock %}
+
+</section>
+
+</div>
 
 </div>
 
 </body>
+
 </html>
