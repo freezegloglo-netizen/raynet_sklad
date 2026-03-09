@@ -346,3 +346,29 @@ height:250px;
 }
 
 }
+
+.car-wrapper{
+position:relative;
+}
+
+.car-mini-popup{
+
+display:none;
+position:absolute;
+background:white;
+padding:10px;
+border-radius:8px;
+box-shadow:0 4px 12px rgba(0,0,0,0.15);
+top:35px;
+left:0;
+z-index:20;
+
+}
+
+.car-mini-popup form{
+
+display:flex;
+gap:6px;
+align-items:center;
+
+}

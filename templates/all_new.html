@@ -70,37 +70,15 @@ onkeyup="searchProducts(this.value)"
 <button class="btn">+</button>
 </form>
 
-<button class="btn btn-car" onclick="openCar('{{ p.code }}')">🚗</button>
+<div class="car-wrapper">
 
-</td>
+<button class="btn btn-car" onclick="toggleCarPopup(this)">🚗</button>
 
-</tr>
-
-{% endfor %}
-
-</tbody>
-</table>
-
-</div>
-
-{% endfor %}
-
-</div>
-
-
-<!-- POPUP -->
-
-<div class="popup" id="carPopup">
-
-<div class="popup-content">
-
-<h3>Přesun do auta</h3>
+<div class="car-mini-popup">
 
 <form method="post" action="/to_car">
 
-<input type="hidden" name="code" id="carCode">
-
-<label>Komu do auta</label>
+<input type="hidden" name="code" value="{{ p.code }}">
 
 <select name="user">
 <option value="Lukas">Lukáš</option>
@@ -108,20 +86,15 @@ onkeyup="searchProducts(this.value)"
 <option value="Milan">Milan</option>
 </select>
 
-<label>Množství</label>
+<input type="number" name="qty" value="1" min="1" style="width:60px">
 
-<input type="number" name="qty" value="1" min="1">
-
-<button class="btn">Přesunout</button>
-
-<button type="button" class="btn btn-danger" onclick="closeCar()">Zrušit</button>
+<button class="btn">✓</button>
 
 </form>
 
 </div>
 
 </div>
-
 
 <script>
 
@@ -169,16 +142,21 @@ t.style.display="none"
 
 }
 
-function openCar(code){
+function toggleCarPopup(btn){
 
-document.getElementById("carPopup").style.display="flex"
-document.getElementById("carCode").value=code
+let popup = btn.nextElementSibling
 
+document.querySelectorAll(".car-mini-popup").forEach(p=>{
+if(p!==popup){
+p.style.display="none"
 }
+})
 
-function closeCar(){
-
-document.getElementById("carPopup").style.display="none"
+if(popup.style.display==="block"){
+popup.style.display="none"
+}else{
+popup.style.display="block"
+}
 
 }
 
