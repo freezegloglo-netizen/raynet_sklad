@@ -1025,3 +1025,17 @@ def all_new(request: Request, auth: str = Cookie(default=None)):
             "grouped": grouped
         }
     )
+
+@app.route("/set_quantity", methods=["POST"])
+def set_quantity():
+
+    data = request.json
+    code = data["code"]
+    qty = int(data["qty"])
+
+    item = Item.query.filter_by(code=code).first()
+    item.quantity = qty
+
+    db.session.commit()
+
+    return {"status":"ok"}

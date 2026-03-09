@@ -46,18 +46,22 @@ onkeyup="searchProducts(this.value)"
 
 <td>
 
+<td>
+
 {% if p.quantity == 0 %}
-<span class="stock-zero">0</span>
+<span class="stock-zero qty"
+onclick="editQty(this,'{{ p.code }}')">0</span>
 
 {% elif p.quantity <= p.min_limit %}
-<span class="stock-low">{{ p.quantity }}</span>
+<span class="stock-low qty"
+onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
 
 {% else %}
-<span class="stock-ok">{{ p.quantity }}</span>
+<span class="stock-ok qty"
+onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
 {% endif %}
 
 </td>
-
 <td style="display:flex; gap:6px;">
 
 <form method="post" action="/change">
@@ -188,6 +192,42 @@ document.getElementById("carCode").value=code
 function closeCar(){
 
 document.getElementById("carPopup").style.display="none"
+
+}
+
+function editQty(el, code){
+
+let current = el.innerText
+
+el.innerHTML =
+`<input type="number"
+value="${current}"
+style="width:60px"
+onblur="saveQty(this,'${code}')"
+onkeydown="if(event.key==='Enter'){saveQty(this,'${code}')}">`
+
+}
+
+
+function saveQty(input, code){
+
+let newQty = input.value
+
+fetch("/set_quantity",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+code:code,
+qty:newQty
+})
+})
+.then(()=>{
+
+input.parentElement.innerHTML=newQty
+
+})
 
 }
 
