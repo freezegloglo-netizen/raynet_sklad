@@ -255,32 +255,47 @@ font-size:12px;
 }
 
 
-/* MINI POPUP */
+/* EDITABLE QUANTITY */
 
-.car-popup{
-position:absolute;
-top:28px;
-right:0;
-background:white;
-border:1px solid #e5e7eb;
-border-radius:8px;
-padding:8px;
-display:none;
-box-shadow:0 4px 12px rgba(0,0,0,0.1);
-z-index:10;
+.qty{
+cursor:pointer;
+font-weight:600;
 }
 
-.car-popup select,
-.car-popup input{
-width:100%;
-margin-bottom:6px;
-padding:4px;
-border:1px solid #e5e7eb;
+.qty input{
+border:none;
+background:#eef2ff;
 border-radius:6px;
+text-align:center;
 }
 
 
-/* DASHBOARD CARDS */
+/* MINI POPUP (CAR) */
+
+.car-wrapper{
+position:relative;
+}
+
+.car-mini-popup{
+display:none;
+position:absolute;
+background:white;
+padding:10px;
+border-radius:8px;
+box-shadow:0 4px 12px rgba(0,0,0,0.15);
+top:35px;
+left:0;
+z-index:20;
+}
+
+.car-mini-popup form{
+display:flex;
+gap:6px;
+align-items:center;
+}
+
+
+/* DASHBOARD */
 
 .stats{
 display:grid;
@@ -307,7 +322,7 @@ font-weight:700;
 }
 
 
-/* LOGOUT BUTTON */
+/* LOGOUT */
 
 .logout-btn{
 background:#2563eb;
@@ -321,6 +336,9 @@ cursor:pointer;
 .logout-btn:hover{
 background:#1d4ed8;
 }
+
+
+/* CHART */
 
 canvas{
 width:100% !important;
@@ -344,31 +362,5 @@ height:100% !important;
 .chart-box{
 height:250px;
 }
-
-}
-
-.car-wrapper{
-position:relative;
-}
-
-.car-mini-popup{
-
-display:none;
-position:absolute;
-background:white;
-padding:10px;
-border-radius:8px;
-box-shadow:0 4px 12px rgba(0,0,0,0.15);
-top:35px;
-left:0;
-z-index:20;
-
-}
-
-.car-mini-popup form{
-
-display:flex;
-gap:6px;
-align-items:center;
 
 }

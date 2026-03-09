@@ -56,7 +56,7 @@ onkeyup="searchProducts(this.value)"
 
 </td>
 
-<td style="display:flex; gap:6px;">
+<td style="display:flex; gap:6px; align-items:center;">
 
 <form method="post" action="/change">
 <input type="hidden" name="code" value="{{ p.code }}">
@@ -72,7 +72,7 @@ onkeyup="searchProducts(this.value)"
 
 <div class="car-wrapper">
 
-<button class="btn btn-car" onclick="toggleCarPopup(this)">🚗</button>
+<button type="button" class="btn btn-car" onclick="toggleCarPopup(this)">🚗</button>
 
 <div class="car-mini-popup">
 
@@ -93,6 +93,21 @@ onkeyup="searchProducts(this.value)"
 </form>
 
 </div>
+
+</div>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+</table>
+
+</div>
+
+{% endfor %}
 
 </div>
 
