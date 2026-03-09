@@ -15,10 +15,8 @@ onkeyup="searchProducts(this.value)"
 {% for manufacturer, products in grouped.items() %}
 
 <div class="card manufacturer-card" onclick="toggleManufacturer('{{ manufacturer }}')">
-
 <h3>{{ manufacturer }}</h3>
 <p>{{ products|length }} produktů</p>
-
 </div>
 
 <div id="man-{{ manufacturer }}" class="card manufacturer-products" style="display:none">
@@ -46,22 +44,18 @@ onkeyup="searchProducts(this.value)"
 
 <td>
 
-<td>
-
 {% if p.quantity == 0 %}
-<span class="stock-zero qty"
-onclick="editQty(this,'{{ p.code }}')">0</span>
+<span class="stock-zero qty" onclick="editQty(this,'{{ p.code }}')">0</span>
 
 {% elif p.quantity <= p.min_limit %}
-<span class="stock-low qty"
-onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
+<span class="stock-low qty" onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
 
 {% else %}
-<span class="stock-ok qty"
-onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
+<span class="stock-ok qty" onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
 {% endif %}
 
 </td>
+
 <td style="display:flex; gap:6px;">
 
 <form method="post" action="/change">
@@ -85,7 +79,6 @@ onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
 {% endfor %}
 
 </tbody>
-
 </table>
 
 </div>
@@ -110,11 +103,9 @@ onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
 <label>Komu do auta</label>
 
 <select name="user">
-
 <option value="Lukas">Lukáš</option>
 <option value="Jirka">Jirka</option>
 <option value="Milan">Milan</option>
-
 </select>
 
 <label>Množství</label>
@@ -146,7 +137,6 @@ el.style.display="none"
 
 }
 
-
 function searchProducts(text){
 
 text=text.toLowerCase()
@@ -156,7 +146,6 @@ let tables=document.querySelectorAll(".manufacturer-products")
 tables.forEach(t=>{
 
 let rows=t.querySelectorAll("tbody tr")
-
 let found=false
 
 rows.forEach(r=>{
@@ -180,14 +169,12 @@ t.style.display="none"
 
 }
 
-
 function openCar(code){
 
 document.getElementById("carPopup").style.display="flex"
 document.getElementById("carCode").value=code
 
 }
-
 
 function closeCar(){
 
@@ -197,20 +184,28 @@ document.getElementById("carPopup").style.display="none"
 
 function editQty(el, code){
 
-let current = el.innerText
+let current = el.textContent.trim()
 
-el.innerHTML =
-`<input type="number"
+el.innerHTML = `
+<input type="number"
 value="${current}"
 style="width:60px"
 onblur="saveQty(this,'${code}')"
-onkeydown="if(event.key==='Enter'){saveQty(this,'${code}')}">`
+onkeydown="if(event.key==='Enter'){saveQty(this,'${code}')}"
+>
+`
+
+let input = el.querySelector("input")
+input.focus()
+input.select()
 
 }
 
 function saveQty(input, code){
 
 let newQty = input.value
+
+if(newQty === "") return
 
 fetch("/set_quantity",{
 method:"POST",
@@ -223,45 +218,7 @@ qty:Number(newQty)
 })
 })
 .then(()=>{
-
-input.parentElement.innerHTML=newQty
-
-})
-
-}
-
-function editQty(el, code){
-
-let current = el.innerText
-
-el.innerHTML =
-`<input type="number"
-value="${current}"
-style="width:60px"
-onblur="saveQty(this,'${code}')"
-onkeydown="if(event.key==='Enter'){saveQty(this,'${code}')}">`
-
-}
-
-
-function saveQty(input, code){
-
-let newQty = input.value
-
-fetch("/set_quantity",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-code:code,
-qty:newQty
-})
-})
-.then(()=>{
-
-input.parentElement.innerHTML=newQty
-
+input.parentElement.textContent = newQty
 })
 
 }
