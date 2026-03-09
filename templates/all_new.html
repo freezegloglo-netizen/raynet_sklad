@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block content %}
 
 <h1>Sklad</h1>
@@ -43,7 +42,6 @@ onkeyup="searchProducts(this.value)"
 <td>{{ p.name }}</td>
 
 <td>
-
 {% if p.quantity == 0 %}
 <span class="stock-zero qty" onclick="editQty(this,'{{ p.code }}')">0</span>
 
@@ -53,23 +51,12 @@ onkeyup="searchProducts(this.value)"
 {% else %}
 <span class="stock-ok qty" onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
 {% endif %}
-
 </td>
 
 <td style="display:flex; gap:6px; align-items:center;">
 
 <button class="btn btn-danger" onclick="changeQty('{{ p.code }}','remove')">−</button>
-
 <button class="btn" onclick="changeQty('{{ p.code }}','add')">+</button>
-
-<div class="car-wrapper">
-
-<td style="display:flex; gap:6px; align-items:center;">
-
-<button class="btn btn-danger" onclick="changeQty('{{ p.code }}','remove')">−</button>
-
-<button class="btn" onclick="changeQty('{{ p.code }}','add')">+</button>
-
 
 <!-- AUTO -->
 
@@ -128,6 +115,35 @@ onkeyup="searchProducts(this.value)"
 
 </td>
 
+</tr>
+
+{% endfor %}
+
+</tbody>
+</table>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+
+<script>
+
+function toggleManufacturer(name){
+
+let el=document.getElementById("man-"+name)
+
+if(el.style.display==="none"){
+el.style.display="block"
+}else{
+el.style.display="none"
+}
+
+}
+
+
 function searchProducts(text){
 
 text=text.toLowerCase()
@@ -160,6 +176,7 @@ t.style.display="none"
 
 }
 
+
 function toggleCarPopup(btn){
 
 let popup = btn.nextElementSibling
@@ -170,13 +187,25 @@ p.style.display="none"
 }
 })
 
-if(popup.style.display==="block"){
-popup.style.display="none"
-}else{
-popup.style.display="block"
-}
+popup.style.display = popup.style.display==="block" ? "none" : "block"
 
 }
+
+
+function toggleInfoPopup(btn){
+
+let popup = btn.nextElementSibling
+
+document.querySelectorAll(".info-mini-popup").forEach(p=>{
+if(p!==popup){
+p.style.display="none"
+}
+})
+
+popup.style.display = popup.style.display==="block" ? "none" : "block"
+
+}
+
 
 function editQty(el, code){
 
@@ -197,11 +226,10 @@ input.select()
 
 }
 
+
 function saveQty(input, code){
 
 let newQty = input.value
-
-if(newQty === "") return
 
 fetch("/set_quantity",{
 method:"POST",
@@ -219,6 +247,7 @@ input.parentElement.textContent = newQty
 
 }
 
+
 function changeQty(code,type){
 
 fetch("/change",{
@@ -231,7 +260,6 @@ body:`code=${code}&type=${type}`
 .then(()=>{
 
 let el=document.querySelector(`[onclick="editQty(this,'${code}')"]`)
-
 if(!el) return
 
 let val=parseInt(el.textContent)
@@ -247,6 +275,7 @@ el.textContent=val
 })
 
 }
+
 
 function sendToCar(e,form){
 
@@ -264,21 +293,23 @@ form.closest(".car-mini-popup").style.display="none"
 
 }
 
-function toggleInfoPopup(btn){
 
-let popup = btn.nextElementSibling
+function uploadPhoto(e,form){
 
-document.querySelectorAll(".info-mini-popup").forEach(p=>{
-if(p!==popup){
-p.style.display="none"
-}
+e.preventDefault()
+
+let data=new FormData(form)
+
+fetch("/upload_photo",{
+method:"POST",
+body:data
 })
+.then(()=>{
 
-if(popup.style.display==="block"){
-popup.style.display="none"
-}else{
-popup.style.display="block"
-}
+let img=form.parentElement.querySelector("img")
+img.src="/product_img/"+data.get("code")+"?t="+Date.now()
+
+})
 
 }
 
