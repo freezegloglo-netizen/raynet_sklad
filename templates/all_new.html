@@ -64,6 +64,17 @@ onkeyup="searchProducts(this.value)"
 
 <div class="car-wrapper">
 
+<td style="display:flex; gap:6px; align-items:center;">
+
+<button class="btn btn-danger" onclick="changeQty('{{ p.code }}','remove')">−</button>
+
+<button class="btn" onclick="changeQty('{{ p.code }}','add')">+</button>
+
+
+<!-- AUTO -->
+
+<div class="car-wrapper">
+
 <button type="button" class="btn btn-car" onclick="toggleCarPopup(this)">🚗</button>
 
 <div class="car-mini-popup">
@@ -88,34 +99,34 @@ onkeyup="searchProducts(this.value)"
 
 </div>
 
+
+<!-- INFO -->
+
+<div class="info-wrapper">
+
+<button type="button" class="btn btn-info" onclick="toggleInfoPopup(this)">ℹ</button>
+
+<div class="info-mini-popup">
+
+<div class="product-image">
+<img src="/product_img/{{ p.code }}" onerror="this.style.display='none'">
+</div>
+
+<form onsubmit="uploadPhoto(event,this)">
+
+<input type="hidden" name="code" value="{{ p.code }}">
+
+<input type="file" name="photo" accept="image/*">
+
+<button class="btn">Uložit</button>
+
+</form>
+
+</div>
+
+</div>
+
 </td>
-
-</tr>
-
-{% endfor %}
-
-</tbody>
-</table>
-
-</div>
-
-{% endfor %}
-
-</div>
-
-<script>
-
-function toggleManufacturer(name){
-
-let el=document.getElementById("man-"+name)
-
-if(el.style.display==="none"){
-el.style.display="block"
-}else{
-el.style.display="none"
-}
-
-}
 
 function searchProducts(text){
 
