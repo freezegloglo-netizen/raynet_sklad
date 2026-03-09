@@ -58,17 +58,9 @@ onkeyup="searchProducts(this.value)"
 
 <td style="display:flex; gap:6px; align-items:center;">
 
-<form method="post" action="/change">
-<input type="hidden" name="code" value="{{ p.code }}">
-<input type="hidden" name="type" value="remove">
-<button class="btn btn-danger">−</button>
-</form>
+<button class="btn btn-danger" onclick="changeQty('{{ p.code }}','remove')">−</button>
 
-<form method="post" action="/change">
-<input type="hidden" name="code" value="{{ p.code }}">
-<input type="hidden" name="type" value="add">
-<button class="btn">+</button>
-</form>
+<button class="btn" onclick="changeQty('{{ p.code }}','add')">+</button>
 
 <div class="car-wrapper">
 
@@ -76,7 +68,7 @@ onkeyup="searchProducts(this.value)"
 
 <div class="car-mini-popup">
 
-<form method="post" action="/to_car">
+<form onsubmit="sendToCar(event,this)">
 
 <input type="hidden" name="code" value="{{ p.code }}">
 
@@ -212,6 +204,51 @@ qty:Number(newQty)
 })
 .then(()=>{
 input.parentElement.textContent = newQty
+})
+
+}
+
+function changeQty(code,type){
+
+fetch("/change",{
+method:"POST",
+headers:{
+"Content-Type":"application/x-www-form-urlencoded"
+},
+body:`code=${code}&type=${type}`
+})
+.then(()=>{
+
+let el=document.querySelector(`[onclick="editQty(this,'${code}')"]`)
+
+if(!el) return
+
+let val=parseInt(el.textContent)
+
+if(type==="add"){
+val++
+}else{
+val=Math.max(0,val-1)
+}
+
+el.textContent=val
+
+})
+
+}
+
+function sendToCar(e,form){
+
+e.preventDefault()
+
+let data=new FormData(form)
+
+fetch("/to_car",{
+method:"POST",
+body:data
+})
+.then(()=>{
+form.closest(".car-mini-popup").style.display="none"
 })
 
 }
