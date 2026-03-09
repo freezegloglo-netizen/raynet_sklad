@@ -10,6 +10,9 @@ from openpyxl import Workbook
 from io import BytesIO
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from fastapi import UploadFile, File
+from fastapi.responses import FileResponse
+import os
 
 app = FastAPI()
 
@@ -970,3 +973,26 @@ async def set_quantity(request: Request):
     safe_close(conn, cur)
 
     return {"status": "ok"}
+
+@app.post("/upload_photo")
+async def upload_photo(code: str = Form(...), photo: UploadFile = File(...)):
+
+    folder = "product_images"
+    os.makedirs(folder, exist_ok=True)
+
+    filepath = f"{folder}/{code}.jpg"
+
+    with open(filepath, "wb") as buffer:
+        buffer.write(await photo.read())
+
+    return {"status": "ok"}
+
+@app.get("/product_img/{code}")
+def get_product_img(code: str):
+
+    path = f"product_images/{code}.jpg"
+
+    if os.path.exists(path):
+        return FileResponse(path)
+
+    return {"error": "no image"}
