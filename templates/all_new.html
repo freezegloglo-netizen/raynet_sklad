@@ -86,14 +86,17 @@ onkeyup="searchProducts(this.value)"
 
 </div>
 
+<button type="button" class="btn btn-info" onclick="toggleInfoRow('{{ p.code }}')">ℹ</button>
 
-<!-- INFO -->
+</td>
 
-<div class="info-wrapper">
+</tr>
 
-<button type="button" class="btn btn-info" onclick="toggleInfoPopup(this)">ℹ</button>
+<tr id="info-{{ p.code }}" class="info-row" style="display:none">
 
-<div class="info-mini-popup">
+<td colspan="4">
+
+<div class="info-content">
 
 <div class="product-image">
 <img src="/product_img/{{ p.code }}" onerror="this.style.display='none'">
@@ -105,11 +108,9 @@ onkeyup="searchProducts(this.value)"
 
 <input type="file" name="photo" accept="image/*">
 
-<button class="btn">Uložit</button>
+<button class="btn">Uložit fotku</button>
 
 </form>
-
-</div>
 
 </div>
 
@@ -120,6 +121,7 @@ onkeyup="searchProducts(this.value)"
 {% endfor %}
 
 </tbody>
+
 </table>
 
 </div>
@@ -310,6 +312,18 @@ let img=form.parentElement.querySelector("img")
 img.src="/product_img/"+data.get("code")+"?t="+Date.now()
 
 })
+
+}
+
+function toggleInfoRow(code){
+
+let row=document.getElementById("info-"+code)
+
+if(row.style.display==="none"){
+row.style.display="table-row"
+}else{
+row.style.display="none"
+}
 
 }
 
