@@ -208,6 +208,41 @@ onkeydown="if(event.key==='Enter'){saveQty(this,'${code}')}">`
 
 }
 
+function saveQty(input, code){
+
+let newQty = input.value
+
+fetch("/set_quantity",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+code:code,
+qty:Number(newQty)
+})
+})
+.then(()=>{
+
+input.parentElement.innerHTML=newQty
+
+})
+
+}
+
+function editQty(el, code){
+
+let current = el.innerText
+
+el.innerHTML =
+`<input type="number"
+value="${current}"
+style="width:60px"
+onblur="saveQty(this,'${code}')"
+onkeydown="if(event.key==='Enter'){saveQty(this,'${code}')}">`
+
+}
+
 
 function saveQty(input, code){
 

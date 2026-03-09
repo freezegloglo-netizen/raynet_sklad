@@ -1026,16 +1026,21 @@ def all_new(request: Request, auth: str = Cookie(default=None)):
         }
     )
 
-@app.route("/set_quantity", methods=["POST"])
-def set_quantity():
+from fastapi import Request
 
-    data = request.json
+@app.post("/set_quantity")
+async def set_quantity(request: Request):
+
+    data = await request.json()
+
     code = data["code"]
     qty = int(data["qty"])
 
-    item = Item.query.filter_by(code=code).first()
-    item.quantity = qty
+    item = db.execute(
+        "UPDATE sklad SET quantity=? WHERE code=?",
+        (qty, code)
+    )
 
-    db.session.commit()
+    db.commit()
 
     return {"status":"ok"}
