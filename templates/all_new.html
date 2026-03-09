@@ -264,6 +264,24 @@ form.closest(".car-mini-popup").style.display="none"
 
 }
 
+function toggleInfoPopup(btn){
+
+let popup = btn.nextElementSibling
+
+document.querySelectorAll(".info-mini-popup").forEach(p=>{
+if(p!==popup){
+p.style.display="none"
+}
+})
+
+if(popup.style.display==="block"){
+popup.style.display="none"
+}else{
+popup.style.display="block"
+}
+
+}
+
 </script>
 
 {% endblock %}
