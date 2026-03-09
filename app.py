@@ -602,51 +602,6 @@ def change(code: str = Form(...), type: str = Form(...), user: str = Cookie(defa
 
     return RedirectResponse("/all_new", status_code=303)
 
-@app.post("/set_quantity")
-def set_quantity(code: str = Form(...),
-                 quantity: int = Form(...),
-                 auth: str = Cookie(default=None)):
-
-    if auth != "ok" or mode != "sklad":
-        return RedirectResponse("/login", status_code=303)
-
-    conn = None
-    cur = None
-
-    try:
-        conn = get_conn()
-        cur = conn.cursor()
-
-        # zjisti původní stav
-        cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
-        row = cur.fetchone()
-        if not row:
-            return RedirectResponse("/all_new", status_code=303)
-
-        old_qty = row[0]
-        difference = quantity - old_qty
-
-        # nastav nové množství
-        cur.execute("""
-            UPDATE products
-            SET quantity=%s
-            WHERE code=%s
-        """, (quantity, code))
-
-        # loguj změnu do historie
-        if difference != 0:
-            cur.execute("""
-                INSERT INTO movements(code, change, user_name)
-                VALUES(%s,%s,'Sklad')
-            """, (code, difference))
-
-        conn.commit()
-
-    finally:
-        safe_close(conn, cur)
-
-    return RedirectResponse("/all_new", status_code=303)
-
 @app.post("/delete_by_code")
 def delete_by_code(code: str = Form(...)):
     conn = get_conn()
@@ -786,40 +741,6 @@ def to_car(code: str = Form(...),
 
     finally:
         safe_close(conn, cur)
-
-    return RedirectResponse("/all_new", status_code=303)
-
-@app.post("/set_quantity")
-def set_quantity(code: str = Form(...),
-                 quantity: int = Form(...),
-                 auth: str = Cookie(default=None),
-                 user: str = Cookie(default=None)):
-
-    if auth != "ok":
-        return RedirectResponse("/login", status_code=303)
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("SELECT quantity FROM products WHERE code=%s", (code,))
-    row = cur.fetchone()
-
-    if not row:
-        safe_close(conn, cur)
-        return RedirectResponse("/all_new", status_code=303)
-
-    old_qty = row[0]
-    diff = quantity - old_qty
-
-    cur.execute("UPDATE products SET quantity=%s WHERE code=%s", (quantity, code))
-
-    cur.execute(
-        "INSERT INTO movements(code, change, user_name) VALUES(%s,%s,%s)",
-        (code, diff, user or "Unknown")
-    )
-
-    conn.commit()
-    safe_close(conn, cur)
 
     return RedirectResponse("/all_new", status_code=303)
 
@@ -1036,11 +957,16 @@ async def set_quantity(request: Request):
     code = data["code"]
     qty = int(data["qty"])
 
-    item = db.execute(
-        "UPDATE sklad SET quantity=? WHERE code=?",
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        "UPDATE products SET quantity=%s WHERE code=%s",
         (qty, code)
     )
 
-    db.commit()
+    conn.commit()
 
-    return {"status":"ok"}
+    safe_close(conn, cur)
+
+    return {"status": "ok"}
