@@ -48,12 +48,6 @@ def shutdown():
 
 PASSWORD = "morava"
 
-USERS = [
-    ("Lukas", "Lukáš"),
-    ("Jirka", "Jirka"),
-    ("Milan", "Milan"),
-]
-
 # ================= DB =================
 
 
@@ -101,6 +95,40 @@ def init_db():
         );
         """)
 
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            display_name TEXT NOT NULL,
+            role TEXT DEFAULT 'driver',
+            active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_settings (
+            id SERIAL PRIMARY KEY,
+            login_background TEXT DEFAULT '/static/login_bg.jpg',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        cur.execute("""
+        INSERT INTO app_users (username, display_name, role)
+        VALUES
+            ('Lukas', 'Lukáš', 'driver'),
+            ('Jirka', 'Jirka', 'driver'),
+            ('Milan', 'Milan', 'driver')
+        ON CONFLICT (username) DO NOTHING;
+        """)
+
+        cur.execute("""
+        INSERT INTO app_settings (login_background)
+        SELECT '/static/login_bg.jpg'
+        WHERE NOT EXISTS (SELECT 1 FROM app_settings);
+        """)
+
         conn.commit()
 
     except Exception as e:
@@ -129,17 +157,119 @@ def startup():
         print("DB INIT FAILED:", e)
         db_pool = None# 
 
+def get_app_users():
+    conn = None
+    cur = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT username, display_name, role
+            FROM app_users
+            WHERE active = TRUE
+            ORDER BY id
+        """)
+        return cur.fetchall()
+    finally:
+        safe_close(conn, cur)
+
+
+def get_login_background():
+    conn = None
+    cur = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT login_background
+            FROM app_settings
+            ORDER BY id
+            LIMIT 1
+        """)
+        row = cur.fetchone()
+        return row[0] if row else "/static/login_bg.jpg"
+    finally:
+        safe_close(conn, cur)
+
 # ================= LOGIN =================
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
-    return """
-    <html><body style="background:#111;color:#eee;font-family:Arial;text-align:center;margin-top:100px">
-    <h2>🔐 Přihlášení</h2>
-    <form method="post">
-    <input type="password" name="password">
-    <button>Přihlásit</button>
-    </form>
-    </body></html>
+    bg = get_login_background()
+    return f"""
+    <!DOCTYPE html>
+    <html lang="cs">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Přihlášení</title>
+        <style>
+            * {{ box-sizing:border-box; }}
+            body {{
+                margin:0;
+                min-height:100vh;
+                font-family:Arial,sans-serif;
+                color:#fff;
+                background:
+                    linear-gradient(rgba(0,0,0,.72), rgba(0,0,0,.82)),
+                    url('{bg}') center/cover no-repeat;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+            }}
+            .card {{
+                width:min(420px, 92vw);
+                background:rgba(15,15,18,.78);
+                border:1px solid rgba(255,255,255,.08);
+                border-radius:24px;
+                padding:34px;
+                backdrop-filter: blur(14px);
+                box-shadow:0 20px 60px rgba(0,0,0,.35);
+            }}
+            h1 {{
+                margin:0 0 22px;
+                font-size:34px;
+            }}
+            .sub {{
+                color:#b8b8b8;
+                margin-bottom:22px;
+            }}
+            input {{
+                width:100%;
+                padding:15px 16px;
+                border-radius:14px;
+                border:1px solid #2a2a2a;
+                background:#111;
+                color:#fff;
+                font-size:16px;
+                margin-bottom:14px;
+            }}
+            button {{
+                width:100%;
+                padding:15px 16px;
+                border:none;
+                border-radius:14px;
+                background:#18c37e;
+                color:#fff;
+                font-size:16px;
+                font-weight:bold;
+                cursor:pointer;
+            }}
+            button:hover {{
+                filter:brightness(1.05);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>Přihlášení</h1>
+            <div class="sub">Vstup do skladového systému</div>
+            <form method="post" action="/login">
+                <input type="password" name="password" placeholder="Zadej heslo" required>
+                <button type="submit">Pokračovat</button>
+            </form>
+        </div>
+    </body>
+    </html>
     """
 
 @app.get("/logout")
@@ -160,38 +290,315 @@ def login(password: str = Form(...)):
 
 # ================= USER SELECT =================
 @app.get("/select_user", response_class=HTMLResponse)
-def select_user(auth: str = Cookie(default=None)):
+def select_user(auth: str = Cookie(default=None), edit: int = 0):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    html = """
-    <html><body style="background:#111;color:#eee;font-family:Arial;
-    display:flex;justify-content:center;align-items:center;height:100vh">
+    users = get_app_users()
+    bg = get_login_background()
+    is_edit = edit == 1
 
-    <div style="text-align:center">
-    <h2>Vyber uživatele</h2>
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="cs">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Výběr uživatele</title>
+        <style>
+            * {{ box-sizing:border-box; }}
+            body {{
+                margin:0;
+                min-height:100vh;
+                font-family:Arial,sans-serif;
+                color:#fff;
+                background:
+                    linear-gradient(rgba(0,0,0,.62), rgba(0,0,0,.86)),
+                    url('{bg}') center/cover no-repeat;
+            }}
+
+            .topbar {{
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                padding:24px 34px;
+            }}
+
+            .brand {{
+                font-size:22px;
+                font-weight:700;
+                letter-spacing:.4px;
+            }}
+
+            .top-actions {{
+                display:flex;
+                gap:12px;
+                align-items:center;
+            }}
+
+            .top-btn {{
+                text-decoration:none;
+                color:#fff;
+                background:rgba(255,255,255,.08);
+                border:1px solid rgba(255,255,255,.12);
+                border-radius:12px;
+                padding:10px 16px;
+                font-size:14px;
+            }}
+
+            .top-btn.primary {{
+                background:#18c37e;
+                color:#fff;
+                border:none;
+            }}
+
+            .wrap {{
+                min-height:calc(100vh - 90px);
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                padding:30px;
+            }}
+
+            .panel {{
+                width:min(1100px, 100%);
+                background:rgba(10,10,12,.50);
+                border:1px solid rgba(255,255,255,.08);
+                border-radius:30px;
+                padding:42px;
+                backdrop-filter: blur(8px);
+            }}
+
+            h1 {{
+                margin:0 0 10px;
+                font-size:44px;
+                text-align:center;
+            }}
+
+            .sub {{
+                text-align:center;
+                color:#c7c7c7;
+                margin-bottom:34px;
+                font-size:18px;
+            }}
+
+            .grid {{
+                display:grid;
+                grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+                gap:22px;
+            }}
+
+            .profile-card {{
+                background:rgba(255,255,255,.08);
+                border:1px solid rgba(255,255,255,.10);
+                border-radius:24px;
+                min-height:220px;
+                padding:22px;
+                display:flex;
+                flex-direction:column;
+                justify-content:space-between;
+                transition:.2s ease;
+            }}
+
+            .profile-card:hover {{
+                transform:translateY(-4px) scale(1.01);
+                background:rgba(255,255,255,.12);
+            }}
+
+            .avatar {{
+                width:78px;
+                height:78px;
+                border-radius:50%;
+                background:linear-gradient(135deg,#18c37e,#1095c1);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:28px;
+                font-weight:bold;
+                margin-bottom:18px;
+            }}
+
+            .name {{
+                font-size:24px;
+                font-weight:700;
+                margin-bottom:12px;
+            }}
+
+            .enter-form button,
+            .action-btn {{
+                width:100%;
+                padding:12px 14px;
+                border:none;
+                border-radius:14px;
+                cursor:pointer;
+                font-size:15px;
+            }}
+
+            .enter-form button {{
+                background:#fff;
+                color:#111;
+                font-weight:bold;
+            }}
+
+            .action-btn {{
+                background:#18c37e;
+                color:#fff;
+                text-decoration:none;
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+            }}
+
+            .edit-box {{
+                margin-top:14px;
+                display:flex;
+                flex-direction:column;
+                gap:10px;
+            }}
+
+            .edit-box input {{
+                width:100%;
+                padding:11px 12px;
+                border-radius:12px;
+                border:1px solid #2d2d2d;
+                background:#111;
+                color:#fff;
+            }}
+
+            .danger {{
+                background:#a92a2a !important;
+                color:#fff;
+            }}
+
+            .footer-actions {{
+                margin-top:28px;
+                display:flex;
+                gap:14px;
+                flex-wrap:wrap;
+                justify-content:center;
+            }}
+
+            .footer-actions form {{
+                display:inline-block;
+            }}
+
+            .footer-actions input {{
+                padding:12px 14px;
+                border-radius:12px;
+                border:1px solid #2d2d2d;
+                background:#111;
+                color:#fff;
+                min-width:220px;
+            }}
+
+            .warehouse-btn {{
+                margin-top:34px;
+                text-align:center;
+            }}
+
+            .warehouse-btn button {{
+                padding:16px 28px;
+                font-size:18px;
+                border:none;
+                border-radius:16px;
+                background:#18c37e;
+                color:#fff;
+                cursor:pointer;
+                font-weight:bold;
+            }}
+
+            @media (max-width: 700px) {{
+                h1 {{ font-size:32px; }}
+                .panel {{ padding:24px; }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="topbar">
+            <div class="brand">MADISSON</div>
+            <div class="top-actions">
+                {"<a class='top-btn' href='/select_user'>Hotovo</a>" if is_edit else "<a class='top-btn primary' href='/select_user?edit=1'>Upravit</a>"}
+                <a class="top-btn" href="/logout">Odhlásit</a>
+            </div>
+        </div>
+
+        <div class="wrap">
+            <div class="panel">
+                <h1>Kdo dnes používá sklad?</h1>
+                <div class="sub">Vyber uživatele nebo přepni do režimu úprav</div>
+
+                <div class="grid">
     """
 
-    for key, label in USERS:
+    for username, display_name, role in users:
+        initial = (display_name[:1] or "?").upper()
+
         html += f"""
-        <form method="post" action="/set_user" style="margin:10px">
-            <input type="hidden" name="user" value="{key}">
-            <button style="padding:15px 40px;font-size:18px">{label}</button>
-    </form>
-    """
+        <div class="profile-card">
+            <div>
+                <div class="avatar">{initial}</div>
+                <div class="name">{display_name}</div>
+            </div>
+        """
 
-    # 👇 TLAČÍTKO SKLAD
+        if not is_edit:
+            html += f"""
+            <form method="post" action="/set_user" class="enter-form">
+                <input type="hidden" name="user" value="{username}">
+                <button type="submit">Vstoupit</button>
+            </form>
+            """
+        else:
+            html += f"""
+            <div class="edit-box">
+                <form method="post" action="/rename_user">
+                    <input type="hidden" name="username" value="{username}">
+                    <input type="text" name="display_name" value="{display_name}" required>
+                    <button type="submit" class="action-btn">Přejmenovat</button>
+                </form>
+
+                <form method="post" action="/delete_user">
+                    <input type="hidden" name="username" value="{username}">
+                    <button type="submit" class="action-btn danger">Odebrat</button>
+                </form>
+            </div>
+            """
+
+        html += "</div>"
+
     html += """
-    <form method="post" action="/set_sklad" style="margin-top:20px">
-        <button style="padding:15px 40px;font-size:18px;background:#2b5">
-            📦 Přehled / Úprava skladu
-        </button>
-    </form>
+                </div>
     """
 
-    html += "</div></body></html>"
-    return HTMLResponse(html)
+    if is_edit:
+        html += """
+                <div class="footer-actions">
+                    <form method="post" action="/create_user">
+                        <input type="text" name="username" placeholder="Interní jméno, např. Tomas" required>
+                        <input type="text" name="display_name" placeholder="Zobrazené jméno, např. Tomáš" required>
+                        <button class="action-btn" type="submit">Přidat řidiče</button>
+                    </form>
 
+                    <form method="post" action="/upload_login_background" enctype="multipart/form-data">
+                        <input type="file" name="photo" accept="image/*" required>
+                        <button class="action-btn" type="submit">Změnit hlavní fotku</button>
+                    </form>
+                </div>
+        """
+
+    html += """
+                <div class="warehouse-btn">
+                    <form method="post" action="/set_sklad">
+                        <button type="submit">📦 Přehled / Úprava skladu</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    return HTMLResponse(html)
 
 import urllib.parse
 
@@ -213,6 +620,82 @@ def set_sklad():
     r.set_cookie("user", "Sklad")
     r.set_cookie("mode", "sklad")
     return r
+
+@app.post("/create_user")
+def create_user(
+    auth: str = Cookie(default=None),
+    username: str = Form(...),
+    display_name: str = Form(...)
+):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = None
+    cur = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO app_users (username, display_name, role)
+            VALUES (%s, %s, 'driver')
+            ON CONFLICT (username) DO NOTHING
+        """, (username.strip(), display_name.strip()))
+        conn.commit()
+    finally:
+        safe_close(conn, cur)
+
+    return RedirectResponse("/select_user?edit=1", status_code=303)
+
+
+@app.post("/rename_user")
+def rename_user(
+    auth: str = Cookie(default=None),
+    username: str = Form(...),
+    display_name: str = Form(...)
+):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = None
+    cur = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE app_users
+            SET display_name=%s
+            WHERE username=%s
+        """, (display_name.strip(), username))
+        conn.commit()
+    finally:
+        safe_close(conn, cur)
+
+    return RedirectResponse("/select_user?edit=1", status_code=303)
+
+
+@app.post("/delete_user")
+def delete_user(
+    auth: str = Cookie(default=None),
+    username: str = Form(...)
+):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    conn = None
+    cur = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE app_users
+            SET active=FALSE
+            WHERE username=%s
+        """, (username,))
+        conn.commit()
+    finally:
+        safe_close(conn, cur)
+
+    return RedirectResponse("/select_user?edit=1", status_code=303)
 
 # ================= DASHBOARD =================
 @app.get("/", response_class=HTMLResponse)
@@ -379,9 +862,10 @@ def cars(request: Request, auth: str = Cookie(default=None)):
     conn = get_conn()
     cur = conn.cursor()
 
+    users = get_app_users()
     cars=[]
 
-    for key,label in USERS:
+    for key, label, role in users:
 
         cur.execute("""
         SELECT c.code,p.name,c.quantity
@@ -619,6 +1103,8 @@ def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
+    users = get_app_users()
+
     html = """
     <html><head><meta charset="utf-8">
     <style>
@@ -629,7 +1115,7 @@ def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
     <h2>Vyber auto</h2>
     """
 
-    for key, label in USERS:
+    for key, label, role in users:
         html += f"""
         <form method="post" action="/to_car">
             <input type="hidden" name="code" value="{code}">
@@ -713,10 +1199,10 @@ def to_car(code: str = Form(...),
 
         cur.execute("""
             UPDATE products
-            SET quantity = quantity - 1
-            WHERE code=%s AND quantity > 0
+            SET quantity = quantity - %s
+            WHERE code=%s AND quantity >= %s
             RETURNING quantity
-        """, (code,))
+        """, (qty, code, qty))
 
         if cur.fetchone() is None:
             conn.commit()
@@ -726,7 +1212,7 @@ def to_car(code: str = Form(...),
         cur.execute("""
             INSERT INTO movements(code, change, user_name)
             VALUES(%s, %s, %s)
-        """, (code, -1, final_user))               
+        """, (code, -qty, final_user))               
                           
         cur.execute("""
             INSERT INTO car_stock(user_name, code, quantity)
@@ -973,6 +1459,39 @@ async def set_quantity(request: Request):
     safe_close(conn, cur)
 
     return {"status": "ok"}
+
+@app.post("/upload_login_background")
+async def upload_login_background(
+    auth: str = Cookie(default=None),
+    photo: UploadFile = File(...)
+):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    folder = "static"
+    os.makedirs(folder, exist_ok=True)
+
+    filepath = os.path.join(folder, "login_bg.jpg")
+
+    with open(filepath, "wb") as buffer:
+        buffer.write(await photo.read())
+
+    conn = None
+    cur = None
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE app_settings
+            SET login_background='/static/login_bg.jpg',
+                updated_at=CURRENT_TIMESTAMP
+            WHERE id = (SELECT id FROM app_settings ORDER BY id LIMIT 1)
+        """)
+        conn.commit()
+    finally:
+        safe_close(conn, cur)
+
+    return RedirectResponse("/select_user?edit=1", status_code=303)
 
 @app.post("/upload_photo")
 async def upload_photo(code: str = Form(...), photo: UploadFile = File(...)):
