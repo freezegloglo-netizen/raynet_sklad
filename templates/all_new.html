@@ -3,6 +3,38 @@
 
 <h1>Sklad</h1>
 
+{% if mode == "sklad" %}
+<div class="card" style="margin-bottom:20px;">
+    <h3 style="margin-bottom:15px;">➕ Přidat produkt</h3>
+
+    <form method="post" action="/add" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end;">
+        <div>
+            <label style="display:block;margin-bottom:6px;font-weight:600;">Kód</label>
+            <input type="text" name="code" required class="search" style="width:100%;margin-bottom:0;">
+        </div>
+
+        <div>
+            <label style="display:block;margin-bottom:6px;font-weight:600;">Název</label>
+            <input type="text" name="name" required class="search" style="width:100%;margin-bottom:0;">
+        </div>
+
+        <div>
+            <label style="display:block;margin-bottom:6px;font-weight:600;">Výrobce</label>
+            <input type="text" name="manufacturer" required class="search" style="width:100%;margin-bottom:0;">
+        </div>
+
+        <div>
+            <label style="display:block;margin-bottom:6px;font-weight:600;">Množství</label>
+            <input type="number" name="quantity" min="0" value="0" required class="search" style="width:100%;margin-bottom:0;">
+        </div>
+
+        <div>
+            <button type="submit" class="btn" style="width:100%;padding:10px 14px;">Uložit produkt</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
 <input 
 class="search"
 placeholder="🔍 Hledat kód, název nebo výrobce..."

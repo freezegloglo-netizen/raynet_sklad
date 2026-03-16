@@ -1066,20 +1066,32 @@ def api_hist(manufacturer:str):
 
 @app.post("/add")
 def add(
+    request: Request,
+    auth: str = Cookie(default=None),
     code: str = Form(...),
     name: str = Form(...),
     manufacturer: str = Form(...),
     quantity: int = Form(0),
     min_limit: int = Form(5)
 ):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    mode = request.cookies.get("mode", "driver")
+    if mode != "sklad":
+        return RedirectResponse("/all_new", status_code=303)
+
     conn = get_conn()
     cur = conn.cursor()
+
     cur.execute("""
         INSERT INTO products(code,name,manufacturer,quantity,min_limit)
         VALUES(%s,%s,%s,%s,%s)
-    """, (code,name,manufacturer,quantity,min_limit))
+    """, (code, name, manufacturer, quantity, min_limit))
+
     conn.commit()
     safe_close(conn, cur)
+
     return RedirectResponse("/all_new", status_code=303)
 
 @app.post("/change")
