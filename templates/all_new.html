@@ -43,22 +43,25 @@ onkeyup="searchProducts(this.value)"
 
 <td>
 {% if p.quantity == 0 %}
-<span class="stock-zero qty" onclick="editQty(this,'{{ p.code }}')">0</span>
+<span class="stock-zero {% if mode == 'sklad' %}qty{% endif %}"
+{% if mode == "sklad" %}onclick="editQty(this,'{{ p.code }}')"{% endif %}>0</span>
 
 {% elif p.quantity <= p.min_limit %}
-<span class="stock-low qty" onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
+<span class="stock-low {% if mode == 'sklad' %}qty{% endif %}"
+{% if mode == "sklad" %}onclick="editQty(this,'{{ p.code }}')"{% endif %}>{{ p.quantity }}</span>
 
 {% else %}
-<span class="stock-ok qty" onclick="editQty(this,'{{ p.code }}')">{{ p.quantity }}</span>
+<span class="stock-ok {% if mode == 'sklad' %}qty{% endif %}"
+{% if mode == "sklad" %}onclick="editQty(this,'{{ p.code }}')"{% endif %}>{{ p.quantity }}</span>
 {% endif %}
 </td>
 
 <td style="display:flex; gap:6px; align-items:center;">
 
+{% if mode == "sklad" %}
 <button class="btn btn-danger" onclick="changeQty('{{ p.code }}','remove')">−</button>
 <button class="btn" onclick="changeQty('{{ p.code }}','add')">+</button>
-
-<!-- AUTO -->
+{% endif %}
 
 <div class="car-wrapper">
 
@@ -70,11 +73,13 @@ onkeyup="searchProducts(this.value)"
 
 <input type="hidden" name="code" value="{{ p.code }}">
 
+{% if mode == "sklad" %}
 <select name="user">
 {% for key, label, role in users %}
 <option value="{{ key }}">{{ label }}</option>
 {% endfor %}
 </select>
+{% endif %}
 
 <input type="number" name="qty" value="1" min="1" style="width:60px">
 
@@ -89,7 +94,6 @@ onkeyup="searchProducts(this.value)"
 <button type="button" class="btn btn-info" onclick="toggleInfoRow('{{ p.code }}')">ℹ</button>
 
 </td>
-
 </tr>
 
 <tr id="info-{{ p.code }}" class="info-row" style="display:none">
