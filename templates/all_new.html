@@ -71,9 +71,9 @@ onkeyup="searchProducts(this.value)"
 <input type="hidden" name="code" value="{{ p.code }}">
 
 <select name="user">
-<option value="Lukas">Lukáš</option>
-<option value="Jirka">Jirka</option>
-<option value="Milan">Milan</option>
+{% for key, label, role in users %}
+<option value="{{ key }}">{{ label }}</option>
+{% endfor %}
 </select>
 
 <input type="number" name="qty" value="1" min="1" style="width:60px">

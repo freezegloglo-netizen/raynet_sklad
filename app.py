@@ -1106,12 +1106,33 @@ def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
     users = get_app_users()
 
     html = """
-    <html><head><meta charset="utf-8">
+    <html>
+    <head>
+    <meta charset="utf-8">
     <style>
-    body{background:#111;color:#eee;font-family:Arial;text-align:center;padding:40px}
-    button{padding:10px 20px;margin:10px;border:none;border-radius:8px;background:#2b5;color:#fff;font-size:16px}
+    body{
+        background:#111;
+        color:#eee;
+        font-family:Arial;
+        text-align:center;
+        padding:40px;
+    }
+    button{
+        padding:10px 20px;
+        margin:10px;
+        border:none;
+        border-radius:8px;
+        background:#2b5;
+        color:#fff;
+        font-size:16px;
+        cursor:pointer;
+    }
+    button:hover{
+        opacity:0.92;
+    }
     </style>
-    </head><body>
+    </head>
+    <body>
     <h2>Vyber auto</h2>
     """
 
@@ -1124,7 +1145,11 @@ def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
         </form>
         """
 
-    html += "</body></html>"
+    html += """
+    </body>
+    </html>
+    """
+
     return HTMLResponse(html)
 
 @app.post("/use_from_car")
@@ -1424,6 +1449,7 @@ def all_new(request: Request, auth: str = Cookie(default=None)):
 
     user = request.cookies.get("user", "Neznámý")
     mode = request.cookies.get("mode", "driver")
+    users = get_app_users()
 
     return templates.TemplateResponse(
         "all_new.html",
@@ -1432,7 +1458,8 @@ def all_new(request: Request, auth: str = Cookie(default=None)):
             "title": "Sklad",
             "user": user,
             "mode": mode,
-            "grouped": grouped
+            "grouped": grouped,
+            "users": users
         }
     )
 
