@@ -855,58 +855,102 @@ def car(request: Request, auth: str = Cookie(default=None), user: str = Cookie(d
 
 @app.get("/cars", response_class=HTMLResponse)
 def cars(request: Request, auth: str = Cookie(default=None)):
-
     if auth != "ok":
         return RedirectResponse("/login", status_code=303)
 
-    conn = get_conn()
-    cur = conn.cursor()
+    import urllib.parse
 
-    users = get_app_users()
-    cars=[]
+    conn = None
+    cur = None
 
-    for key, label, role in users:
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
 
-        cur.execute("""
-        SELECT c.code,p.name,c.quantity
-        FROM car_stock c
-        JOIN products p ON p.code=c.code
-        WHERE c.user_name=%s
-        ORDER BY c.code
-        """,(key,))
+        raw_user = request.cookies.get("user", "Neznámý")
+        user = urllib.parse.unquote(raw_user) if raw_user else "Neznámý"
+        mode = request.cookies.get("mode", "driver")
 
-        rows=cur.fetchall()
+        cars = []
 
-        items=[]
+        if mode == "sklad":
+            users = get_app_users()
 
-        for r in rows:
+            for key, label, role in users:
+                cur.execute("""
+                    SELECT c.code, p.name, c.quantity
+                    FROM car_stock c
+                    JOIN products p ON p.code = c.code
+                    WHERE c.user_name=%s AND c.quantity > 0
+                    ORDER BY c.code
+                """, (key,))
+                rows = cur.fetchall()
 
-            items.append({
-                "code":r[0],
-                "name":r[1],
-                "quantity":r[2]
+                items = []
+                for r in rows:
+                    items.append({
+                        "code": r[0],
+                        "name": r[1],
+                        "quantity": r[2]
+                    })
+
+                cars.append({
+                    "user_key": key,
+                    "user": label,
+                    "products": items
+                })
+
+            page_title = "Auta"
+
+        else:
+            cur.execute("""
+                SELECT display_name
+                FROM app_users
+                WHERE username=%s
+                LIMIT 1
+            """, (user,))
+            row = cur.fetchone()
+            display_name = row[0] if row else user
+
+            cur.execute("""
+                SELECT c.code, p.name, c.quantity
+                FROM car_stock c
+                JOIN products p ON p.code = c.code
+                WHERE c.user_name=%s AND c.quantity > 0
+                ORDER BY c.code
+            """, (user,))
+            rows = cur.fetchall()
+
+            items = []
+            for r in rows:
+                items.append({
+                    "code": r[0],
+                    "name": r[1],
+                    "quantity": r[2]
+                })
+
+            cars.append({
+                "user_key": user,
+                "user": display_name,
+                "products": items
             })
 
-        cars.append({
-            "user":label,
-            "products": items
-        })
+            page_title = "Auto"
 
-    safe_close(conn,cur)
-
-    user=request.cookies.get("user","Neznámý")
-    mode=request.cookies.get("mode","driver")
+    finally:
+        safe_close(conn, cur)
 
     return templates.TemplateResponse(
         "cars_new.html",
         {
-            "request":request,
-            "title":"Auta",
-            "user":user,
-            "mode":mode,
-            "cars":cars
+            "request": request,
+            "title": page_title,
+            "user": user,
+            "mode": mode,
+            "cars": cars
         }
     )
+
 @app.get("/export/products")
 def export_products(auth: str = Cookie(default=None)):
 
@@ -1153,14 +1197,26 @@ def choose_car(code: str = Form(...), auth: str = Cookie(default=None)):
     return HTMLResponse(html)
 
 @app.post("/use_from_car")
-def use_from_car(code: str = Form(...), user: str = Cookie(default=None)):
+def use_from_car(
+    request: Request,
+    code: str = Form(...),
+    target_user: str = Form(None),
+    user: str = Cookie(default=None),
+    auth: str = Cookie(default=None)
+):
     import urllib.parse
+
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
 
     if user:
         user = urllib.parse.unquote(user)
 
-    if not user:
-        return RedirectResponse("/login", status_code=303)
+    mode = request.cookies.get("mode", "driver")
+    final_user = target_user if mode == "sklad" and target_user else user
+
+    if not final_user:
+        return RedirectResponse("/cars", status_code=303)
 
     conn = None
     cur = None
@@ -1169,30 +1225,86 @@ def use_from_car(code: str = Form(...), user: str = Cookie(default=None)):
         conn = get_conn()
         cur = conn.cursor()
 
-        # odečti z auta
         cur.execute("""
             UPDATE car_stock
             SET quantity = quantity - 1
             WHERE user_name=%s AND code=%s AND quantity > 0
             RETURNING quantity
-        """, (user, code))
+        """, (final_user, code))
 
         if cur.fetchone() is None:
             conn.commit()
-            return RedirectResponse("/car", status_code=303)
+            return RedirectResponse("/cars", status_code=303)
 
-        # log pohybu
         cur.execute("""
             INSERT INTO movements(code, change, user_name)
             VALUES(%s, %s, %s)
-        """, (code, -1, user))
+        """, (code, -1, final_user))
 
         conn.commit()
 
     finally:
         safe_close(conn, cur)
 
-    return RedirectResponse("/car", status_code=303)
+    return RedirectResponse("/cars", status_code=303)
+
+@app.post("/return_from_car")
+def return_from_car(
+    code: str = Form(...),
+    target_user: str = Form(None),
+    request: Request = None,
+    auth: str = Cookie(default=None)
+):
+    if auth != "ok":
+        return RedirectResponse("/login", status_code=303)
+
+    import urllib.parse
+
+    mode = request.cookies.get("mode", "driver")
+    cookie_user = request.cookies.get("user", None)
+    if cookie_user:
+        cookie_user = urllib.parse.unquote(cookie_user)
+
+    final_user = target_user if mode == "sklad" and target_user else cookie_user
+
+    if not final_user:
+        return RedirectResponse("/cars", status_code=303)
+
+    conn = None
+    cur = None
+
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+
+        cur.execute("""
+            UPDATE car_stock
+            SET quantity = quantity - 1
+            WHERE user_name=%s AND code=%s AND quantity > 0
+            RETURNING quantity
+        """, (final_user, code))
+
+        if cur.fetchone() is None:
+            conn.commit()
+            return RedirectResponse("/cars", status_code=303)
+
+        cur.execute("""
+            UPDATE products
+            SET quantity = quantity + 1
+            WHERE code=%s
+        """, (code,))
+
+        cur.execute("""
+            INSERT INTO movements(code, change, user_name)
+            VALUES(%s, %s, %s)
+        """, (code, 1, final_user))
+
+        conn.commit()
+
+    finally:
+        safe_close(conn, cur)
+
+    return RedirectResponse("/cars", status_code=303)
 
 @app.post("/to_car")
 def to_car(code: str = Form(...),

@@ -2,7 +2,9 @@
 
 {% block content %}
 
-<h1>🚗 Auta techniků</h1>
+<h1>
+🚗 {% if mode == "sklad" %}Auta techniků{% else %}Auto{% endif %}
+</h1>
 
 <div class="manufacturer-grid">
 
@@ -25,29 +27,39 @@
 
 <tbody>
 
-{% for p in car.products %}
+{% if car.products %}
+    {% for p in car.products %}
+    <tr>
+        <td>{{ p.code }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.quantity }}</td>
 
-<tr>
+        <td style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
 
-<td>{{ p.code }}</td>
-<td>{{ p.name }}</td>
-<td>{{ p.quantity }}</td>
+            <form method="post" action="/use_from_car" style="margin:0;">
+                <input type="hidden" name="code" value="{{ p.code }}">
+                {% if mode == "sklad" %}
+                <input type="hidden" name="target_user" value="{{ car.user_key }}">
+                {% endif %}
+                <button class="btn" type="submit">Použito</button>
+            </form>
 
-<td>
+            <form method="post" action="/return_from_car" style="margin:0;">
+                <input type="hidden" name="code" value="{{ p.code }}">
+                {% if mode == "sklad" %}
+                <input type="hidden" name="target_user" value="{{ car.user_key }}">
+                {% endif %}
+                <button class="btn btn-info" type="submit">Vrátit</button>
+            </form>
 
-<form method="post" action="/use_from_car">
-
-<input type="hidden" name="code" value="{{ p.code }}">
-
-<button class="btn-small">Použito</button>
-
-</form>
-
-</td>
-
-</tr>
-
-{% endfor %}
+        </td>
+    </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="4" style="color:#6b7280;">Auto je prázdné</td>
+    </tr>
+{% endif %}
 
 </tbody>
 
